@@ -7,8 +7,8 @@ async function main() {
 
   const Token = await ethers.getContractFactory("Token");
   const token = await Token.deploy(
-    "Test Token",
-    "TT",
+    "Sparkso Token",
+    "SPARKSO",
     "1000000000000000000000000"
   );
 
