@@ -20,19 +20,11 @@ contract Sparkso is ERC20 {
     //Total supply
     uint256 private _totalSupply = 420000000; 
 
-    //Ico total supply
-    uint256 public icoSupply = 160679400;
-
-    //Ico mintable supply
-    uint256 public mintableIcoSupply = 140700000; 
-
-    //Ico bonus supply
-    uint256 public bonusIcoSupply = icoSupply - mintableIcoSupply;
-
     //Wallet where all tokens are minted
     address public wallet;
     
-    constructor(address wallet_) ERC20(NAME, SYMBOL) {
+    constructor(address payable wallet_) ERC20(NAME, SYMBOL) {
+        require(wallet_ != address(0), "Sparkso token: wallet is the zero address");
         wallet = wallet_;
         _mint(wallet_, _totalSupply * 10 ^ DECIMALS);
     }
