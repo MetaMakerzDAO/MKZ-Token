@@ -1,20 +1,24 @@
-[![Actions Status](https://github.com/abdelhamidbakhta/token-vesting-contracts/workflows/main/badge.svg)](https://github.com/abdelhamidbakhta/token-vesting-contracts/actions)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![npm version](https://badge.fury.io/js/token-vesting-contracts.svg)](https://badge.fury.io/js/token-vesting-contracts)
 
-# Token Vesting Contracts
+# Sparkso ICO contract
 
 ## Overview
 
-On-Chain vesting scheme enabled by smart contracts.
+Fork [Token vesting contracts](https://github.com/abdelhamidbakhta/token-vesting-contracts/) to build ICO mechanism for [Sparkso]() project.
 
 `TokenVesting` contract can release its token balance gradually like a typical vesting scheme, with a cliff and vesting period.
 Optionally revocable by the owner.
 
-## 🎭🧑‍💻 Security audits 
+`SparksoToken` contract is a simple ERC20 with fixed supply.
 
-- [Security audit](https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/audits/hacken_audit_report.pdf) from [Hacken](https://hacken.io)
+`SparksoICO` contract encapsulate `TokenVesting` contract to build a four stages timed crowdsale with different rates and bonuses at each stages.
+
+## 🔐💻 Security audits 
+
+- [TokenVesting](https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/audits/hacken_audit_report.pdf) security audit from [Hacken](https://hacken.io)
+
+- SparksoICO - ⌛In progress⌛
 
 ### 📦 Installation
 
@@ -65,4 +69,4 @@ $ npx hardhat  verify --network mainnet $CONTRACT_ADDRESS $CONSTRUCTOR_ARGUMENTS
 
 ## 📄 License
 
-**Token Vesting Contracts** is released under the [Apache-2.0](LICENSE).
+**Sparkso ICO contracts** is released under the [Apache-2.0](LICENSE).
