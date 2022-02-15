@@ -5,18 +5,14 @@ async function main() {
 
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
-  const Token = await ethers.getContractFactory("Token");
-  const token = await Token.deploy(
-    "Sparkso Token",
-    "SPARKSO",
-    "1000000000000000000000000"
-  );
+  const Token = await ethers.getContractFactory("SparksoToken");
+  const token = await Token.deploy(deployer.address);
 
   console.log("Token address:", token.address);
 
-  const TokenVesting = await ethers.getContractFactory("TokenVesting");
-  const tokenVesting = await TokenVesting.deploy(token.address);
-  console.log("TokenVesting address:", tokenVesting.address);
+  const SparksoICO = await ethers.getContractFactory("SparskoICO");
+  const sparksoICO = await SparksoICO.deploy(token.address);
+  console.log("SparksoICO address:", sparksoICO.address);
 }
 
 main()
