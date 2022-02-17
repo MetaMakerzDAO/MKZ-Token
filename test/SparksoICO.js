@@ -60,6 +60,7 @@ describe("TokenVesting", function () {
       expect(await tokenVesting.getWithdrawableAmount()).to.equal(ICO_SUPPLY);
 
       const openingTime = 1646485200;
+      const closingTime = openingTime * 3 * 30 * 24 * 3600; //By default 3 months
       const beneficiary = addr1;
       
       // check that is it not possible to purchase token before opening time
@@ -78,17 +79,10 @@ describe("TokenVesting", function () {
       ).to.be.revertedWith(
         "Sparkso ICO: Amount need to be superior to the minimum wei defined."
       );
-
       // purchase tokens
       await expect(
         beneficiary.sendTransaction({to: sparksoICO.address, value: 1})
       ).to.emit(sparksoICO, "TokensPurchase");
-      
-      // check the balance of the beneficiary
-      expect(await testToken.balanceOf(beneficiary.address)).to.equal(
-        RATE[0] +     // Tokens
-        0.3 * RATE[0] // Bonus (first 500 it is 30% bonus)
-      );
 
       // check wei raised in the contract
       expect(await sparksoICO.weiRaised()).to.equal(1);
@@ -96,7 +90,7 @@ describe("TokenVesting", function () {
       // check the purchase addresses counter
       expect(await sparksoICO.countAdresses()).to.equal(1);
 
-      // check that beneficiary cannot purchase another time
+      // check that beneficiary cannot purchase a second time
       expect(await 
         beneficiary.sendTransaction({to: sparksoICO.address, value: 1})
       ).to.be.revertedWith(

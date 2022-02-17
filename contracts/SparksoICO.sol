@@ -1,6 +1,6 @@
 // contracts/SparksoIco.sol
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.11;
+pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -21,19 +21,22 @@ contract SparksoICO is TokenVesting {
     // Address where funds are collected
     address payable private _wallet;
 
-    // Stages of the ICO
-    uint8 public constant STAGES = 4;
-
-    // Manage the current stage of the ICO
-    uint8 private _currentStage = 0;
-
     // Bonus is a percentage of your token purchased in addition to your given tokens.
     // If bonus is 30% you will have : number_tokens + number_tokens * (30 / 100)
     // Bonus is different for each stages
     uint8[4] private _bonus;
 
-    // Count first 500 purchase
+    // Stages of the ICO
+    uint8 public constant STAGES = 4;
+    
+    // Manage the current stage of the ICO
+    uint8 private _currentStage = 0;
+
+    // Count first 500 purchases
     uint16 private _countAdresses = 0;
+
+    // Delay the ICO _colsingTime 
+    uint256 private _delay = 0;
 
     // Ico total supply
     uint256 public constant ICO_SUPPLY = 160679400;
@@ -146,75 +149,115 @@ contract SparksoICO is TokenVesting {
     /**
      * @dev fallback function ***DO NOT OVERRIDE***
      */
-    fallback() external payable override {
+    fallback() 
+        external 
+        payable 
+        virtual
+        override 
+    {
         buyTokens(msg.sender);
     }
+
+    // -----------------------------------------
+    // External interface
+    // -----------------------------------------
 
     /**
      * @return the count of addresses
      */
-    function countAdresses() external view returns (uint16){
+    function countAdresses() 
+        external 
+        view
+        returns (uint16)
+    {
         return _countAdresses;
     }
 
     /**
      * @return the total amount wei raised.
      */
-    function weiRaised() external view returns (uint256) {
+    function weiRaised() 
+        external 
+        view 
+        returns (uint256) 
+    {
         return _weiRaised;
     }
 
     /**
      * @return the current stage of the ICO.
      */
-    function currentStage() external view returns (uint8) {
+    function currentStage() 
+        external 
+        view 
+        returns (uint8) 
+    {
         return _currentStage;
     }
 
     /**
      * @return the number of token units a buyer gets per wei for each stages.
      */
-    function rate() external view returns (uint256[4] memory) {
+    function rate() 
+        external 
+        view 
+        returns (uint256[4] memory) 
+    {
         return _rate;
     }
 
     /**
      * @return the number of tokens allocated for each stages
      */
-    function weiGoals() external view returns (uint256[4] memory) {
+    function weiGoals() 
+        external 
+        view 
+        returns (uint256[4] memory) 
+    {
         return _weiGoals;
     }
 
     /**
      * @return the bonus for each stages
      */
-    function bonus() external view returns (uint8[4] memory) {
+    function bonus() 
+        external 
+        view 
+        returns (uint8[4] memory) 
+    {
         return _bonus;
     }
 
     /**
      * @return the ICO openingTime
      */
-    function openingTime() external view returns (uint256) {
+    function openingTime() 
+        external 
+        view 
+        returns (uint256) 
+    {
         return _openingTime;
     }
 
     /**
      * @return the ICO closingTime
      */
-    function closingTime() external view returns (uint256) {
-        return _closingTime;
+    function closingTime() 
+        external 
+        view 
+        returns (uint256) 
+    {
+        return _closingTime.add(_delay);
     }
-
-    // -----------------------------------------
-    // Crowdsale external interface
-    // -----------------------------------------
 
     /**
      * @dev low level token purchase
      * @param _beneficiary Address performing the token purchase
      */
-    function buyTokens(address _beneficiary) public payable {
+    function buyTokens(address _beneficiary) 
+        public 
+        payable 
+    {
         uint256 weiAmount = msg.value;
         _preValidatePurchase(_beneficiary, weiAmount);
 
@@ -234,30 +277,151 @@ contract SparksoICO is TokenVesting {
             _vest
         );
 
-        _updatePurchasingState(_beneficiary, weiAmount);
+        _updatePurchasingState();
 
         _forwardFunds();
-        _postValidatePurchase(_beneficiary, weiAmount);
+        _postValidatePurchase(_beneficiary);
+    }
+
+    /**
+     * @dev Delay the ICO _closingTime
+     * @param _timeToDelay Add a time delay in seconds
+     */
+    function delayICO(uint256 _timeToDelay) 
+        public 
+        nonReentrant
+        onlyOwner 
+    {
+        require(
+            _timeToDelay > 0,
+            "Sparkso ICO: the delay need to be superior to 0."
+        );
+        // Convert the delay time into seconds and add to the current delay
+        _delay = _delay.add(_timeToDelay.mul(1000));
     }
 
     // -----------------------------------------
-    // Crowdsale internal interface
+    // Internal interface
     // -----------------------------------------
 
     /**
      * @dev Determines how ETH is stored/forwarded on purchases.
      */
-    function _forwardFunds() internal {
+    function _forwardFunds() 
+        internal 
+    {
         _wallet.transfer(msg.value);
     }
 
     /**
+     * @dev Validation of an executed purchase.
+     * @param _beneficiary Address performing the token purchase
+     */
+    function _postValidatePurchase(address _beneficiary)
+        internal
+    {
+        // Add address if in the 500 first buyers
+        if (_getCountAddresses() < 500) {
+            _firstAddresses[_beneficiary] = true;
+            _countAdresses++;
+        }
+    }
+
+    /**
+     * @dev Source of tokens.
+     * @param _beneficiary Address performing the token purchase
+     * @param _tokenAmount Number of tokens to be emitted
+     */
+    function _deliverTokens(address _beneficiary, uint256 _tokenAmount)
+        internal
+    {
+        uint256 vestingValue = _currentStage == 0 ? 1 : _vestingValue;
+        uint256 slicePeriod = _currentStage == 0 ? 1 : _slicePeriod;
+
+        createVestingSchedule(
+            _beneficiary,
+            _closingTime,
+            _cliffValues[_currentStage],
+            vestingValue,
+            slicePeriod,
+            false,
+            _tokenAmount
+        );
+    }
+
+    /**
+     * @dev Executed when a purchase has been validated and is ready to be executed. Not necessarily emits/sends tokens.
+     * @param _beneficiary Address receiving the tokens
+     * @param _tokenAmount Number of tokens to be purchased
+     */
+    function _processPurchase(address _beneficiary, uint256 _tokenAmount)
+        internal
+    {
+        _deliverTokens(_beneficiary, _tokenAmount);
+    }
+
+    /**
+     * @dev Update current stage of the ICO
+     */
+    function _updatePurchasingState()
+        internal
+    {
+        uint256 weiGoal = 0;
+        for (uint8 i = 0; i < STAGES; i++) weiGoal += _weiGoals[i];
+
+        if (_weiRaised >= weiGoal && _currentStage < STAGES) {
+            _currentStage++;
+            // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
+            _cliff = _currentStage >= 2 ? true : false;
+            // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
+            _vest = _currentStage != 0 ? true : false;
+        }
+    }
+
+    /**
+     * @dev Calculate the number of tokens depending on current ICO stage with corresponding rate and bonus
+     * @param _weiAmount Value in wei to be converted into tokens
+     * @return Number of tokens that can be purchased with the specified _weiAmount
+     */
+    function _getTokenAmount(uint256 _weiAmount)
+        internal
+        view
+        returns (uint256)
+    {
+        uint256 rate_ = _rate[_currentStage];
+        uint256 tokens = _weiAmount.mul(rate_);
+        uint256 bonus_ = _getCountAddresses() > 500 ? tokens.mul(_bonus[_currentStage]) : tokens.mul(30);
+        return tokens.add(bonus_.div(100));
+    }
+
+    /**
+     * @return the number of people (within the 500 ones) who purchased tokens 
+     */
+    function _getCountAddresses()
+        internal
+        virtual
+        view
+        returns(uint256){
+            return _countAdresses;
+        }
+
+    function getCurrentTime()
+        internal
+        override
+        virtual
+        view
+        returns(uint256){
+        return block.timestamp.sub(_delay);
+    }
+
+     /**
      * @dev Validation of an incoming purchase.
      * @param _beneficiary Address performing the token purchase
      * @param _weiAmount Value in wei involved in the purchase
      */
     function _preValidatePurchase(address _beneficiary, uint256 _weiAmount)
         internal
+        view
     {
         require(
             _beneficiary != address(0),
@@ -294,97 +458,5 @@ contract SparksoICO is TokenVesting {
                 "Sparkso ICO: Amount need to be superior to the minimum wei defined."
             );
         }
-    }
-
-    /**
-     * @dev Validation of an executed purchase.
-     * @param _beneficiary Address performing the token purchase
-     * @param _weiAmount Value in wei involved in the purchase
-     */
-    function _postValidatePurchase(address _beneficiary, uint256 _weiAmount)
-        internal
-    {
-        // Add address if in the 500 first buyers
-        if (_getCountAddresses() < 500) {
-            _firstAddresses[_beneficiary] = true;
-            _countAdresses++;
-        }
-    }
-
-    /**
-     * @dev Source of tokens.
-     * @param _beneficiary Address performing the token purchase
-     * @param _tokenAmount Number of tokens to be emitted
-     */
-    function _deliverTokens(address _beneficiary, uint256 _tokenAmount)
-        internal
-    {
-        if (!_cliff && !_vest) _token.transfer(_beneficiary, _tokenAmount);
-        else {
-            createVestingSchedule(
-                _beneficiary,
-                getCurrentTime(),
-                _cliffValues[_currentStage],
-                _vestingValue,
-                _slicePeriod,
-                false,
-                _tokenAmount
-            );
-        }
-    }
-
-    /**
-     * @dev Executed when a purchase has been validated and is ready to be executed. Not necessarily emits/sends tokens.
-     * @param _beneficiary Address receiving the tokens
-     * @param _tokenAmount Number of tokens to be purchased
-     */
-    function _processPurchase(address _beneficiary, uint256 _tokenAmount)
-        internal
-    {
-        _deliverTokens(_beneficiary, _tokenAmount);
-    }
-
-    /**
-     * @dev Override for extensions that require
-     * @param _beneficiary Address receiving the tokens
-     * @param _weiAmount Value in wei involved in the purchase
-     */
-    function _updatePurchasingState(address _beneficiary, uint256 _weiAmount)
-        internal
-    {
-        uint256 weiGoal = 0;
-        for (uint8 i = 0; i < STAGES; i++) weiGoal += _weiGoals[i];
-
-        if (_weiRaised >= weiGoal && _currentStage < STAGES) {
-            _currentStage++;
-            // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
-            _cliff = _currentStage >= 2 ? true : false;
-            // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
-            _vest = _currentStage != 0 ? true : false;
-        }
-    }
-
-    /**
-     * @dev Calculate the number of tokens depending on current ICO stage with corresponding rate and bonus
-     * @param _weiAmount Value in wei to be converted into tokens
-     * @return Number of tokens that can be purchased with the specified _weiAmount
-     */
-    function _getTokenAmount(uint256 _weiAmount)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 rate_ = _rate[_currentStage];
-        uint256 tokens = _weiAmount.mul(rate_);
-        uint256 bonus_ = _getCountAddresses() > 500 ? tokens.mul(_bonus[_currentStage]) : tokens.mul(30);
-        return tokens.add(bonus_.div(100));
-    }
-
-    function _getCountAddresses()
-        internal
-        virtual
-        view
-        returns(uint256){
-            return _countAdresses;
-        }
+    }    
 }
