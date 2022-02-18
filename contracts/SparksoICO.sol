@@ -38,6 +38,9 @@ contract SparksoICO is TokenVesting {
     // Delay the ICO _colsingTime 
     uint256 private _delay = 0;
 
+    // Total amount wei raised
+    uint256 private _weiRaised = 0;
+
     // Ico total supply
     uint256 public constant ICO_SUPPLY = 160679400;
 
@@ -48,6 +51,9 @@ contract SparksoICO is TokenVesting {
 
     // Wei goal is different for each stages
     uint256[4] private _weiGoals;
+
+    // Wei goal base on _weiGoals
+    uint256 private _weiGoal;
 
     // Wei mini to invest (used only for the first stage)
     uint256[2] private _minWei;
@@ -66,9 +72,6 @@ contract SparksoICO is TokenVesting {
 
     // Closing ICO time
     uint256 private _closingTime;
-
-    // Total amount wei raised
-    uint256 private _weiRaised;
 
     // First 500 addresses purchasing tokens
     mapping(address => bool) private _firstAddresses;
@@ -125,6 +128,9 @@ contract SparksoICO is TokenVesting {
             0.19 * 10**18, // Stage 1 first 500 people
             0.08 * 10**18
         ];
+        
+        // Calculate _weiGoal
+        for (uint8 i = 0; i < STAGES; i++) _weiGoal += _weiGoals[i];
 
         // 30 days into seconds
         uint256 monthSecond = 30 * 24 * 3600;
@@ -367,7 +373,7 @@ contract SparksoICO is TokenVesting {
         internal
     {
         uint256 weiGoal = 0;
-        for (uint8 i = 0; i < STAGES; i++) weiGoal += _weiGoals[i];
+        for (uint8 i = 0; i < _currentStage; i++) weiGoal += _weiGoals[i];
 
         if (_weiRaised >= weiGoal && _currentStage < STAGES) {
             _currentStage++;
@@ -436,7 +442,7 @@ contract SparksoICO is TokenVesting {
             "Sparkso ICO: ICO is now closed, times up."
         );
         require(
-            _weiRaised >= ICO_SUPPLY,
+            _weiRaised < _weiGoal,
             "Sparkso ICO: ICO is now closed, all funds are raised."  
         );
 

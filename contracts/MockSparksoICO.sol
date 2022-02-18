@@ -17,12 +17,14 @@ contract MockSparksoICO is SparksoICO{
     }
 
     function setCurrentTime(uint256 _time)
-        external{
+        external
+    {
         mockTime = _time;
     }
     
     function setCountAddresses(uint256 _count)
-        external{
+    external
+    {
         countAdresses = _count;
     }
 
@@ -31,7 +33,8 @@ contract MockSparksoICO is SparksoICO{
         virtual
         override
         view
-        returns(uint256){
+        returns(uint256)
+    {
         return mockTime;
     }
 
@@ -40,7 +43,8 @@ contract MockSparksoICO is SparksoICO{
         virtual
         override
         view
-        returns(uint256){
+        returns(uint256)
+    {
         return countAdresses;
     }
 }

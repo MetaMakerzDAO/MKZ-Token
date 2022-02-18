@@ -14,7 +14,7 @@ Optionally revocable by the owner.
 
 `SparksoICO` contract encapsulate `TokenVesting` contract to build a four stages timed crowdsale with different rates and bonuses at each stages.
 
-## 🔐💻 Security audits 
+## 🔐💻 Security audits
 
 - [TokenVesting](https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/audits/hacken_audit_report.pdf) security audit from [Hacken](https://hacken.io)
 
