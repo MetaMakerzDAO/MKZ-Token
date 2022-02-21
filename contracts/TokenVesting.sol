@@ -324,7 +324,7 @@ contract TokenVesting is Ownable, ReentrancyGuard{
     internal
     view
     returns(uint256){
-        uint256 currentTime = getCurrentTime();
+        uint256 currentTime = getCurrentTime(); 
         if ((currentTime < vestingSchedule.cliff) || vestingSchedule.revoked == true) {
             return 0;
         } else if (currentTime >= vestingSchedule.start.add(vestingSchedule.duration)) {
@@ -338,6 +338,7 @@ contract TokenVesting is Ownable, ReentrancyGuard{
             vestedAmount = vestedAmount.sub(vestingSchedule.released);
             return vestedAmount;
         }
+        
     }
 
     function getCurrentTime()

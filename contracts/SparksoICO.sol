@@ -4,7 +4,6 @@ pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./TokenVesting.sol";
 
@@ -128,11 +127,11 @@ contract SparksoICO is TokenVesting {
 
         // Input values in ether multiply by 10^18 to convert into wei
         _weiGoals = [
-            217 * 10**18, // Stage 1 wei goal (ETH)
-            813 * 10**18, // Stage 2 wei goal (ETH)
+            217 * 10**18,  // Stage 1 wei goal (ETH)
+            813 * 10**18,  // Stage 2 wei goal (ETH)
             1301 * 10**18, // Stage 3 wei goal (ETH)
-            1708 * 10**18
-        ]; // Stage 4 wei goal (ETH)
+            1708 * 10**18 // Stage 4 wei goal (ETH)
+        ]; 
         _minWei = [
             0.19 * 10**18, // Stage 1 first 500 people
             0.08 * 10**18
@@ -153,7 +152,7 @@ contract SparksoICO is TokenVesting {
 
         // Input value timestamp in second of the opening ICO time
         _openingTime = 1646485200; // The 5th march 2022
-        _closingTime = _openingTime.add(monthSecond.mul(3).mul(1000));
+        _closingTime = _openingTime.add(monthSecond.mul(4));
 
         // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
         _cliff = false;
@@ -339,12 +338,6 @@ contract SparksoICO is TokenVesting {
     }
 
     /**
-     * @dev Update current stage of the ICO.
-     * @dev Calculate the actual wei goal and define if the current stage need to increment
-     */
-    function _updatePurchasingState() internal {}
-
-    /**
      * @dev Calculate the number of tokens depending on current ICO stage with corresponding rate and bonus
      * @param _weiAmount Value in wei to be converted into tokens
      * @return Number of tokens that can be purchased with the specified _weiAmount
@@ -360,7 +353,7 @@ contract SparksoICO is TokenVesting {
         uint256 bonus_ = _getCountAddresses() > 500
             ? tokens.mul(_bonus[_currentStage])
             : tokens.mul(30); // 500 first bonus equal to 30%
-        return tokens.add(bonus_.div(10));
+        return tokens.add(bonus_.div(100));
     }
 
     /**
@@ -376,7 +369,7 @@ contract SparksoICO is TokenVesting {
     function getCurrentTime() internal view virtual override returns (uint256) {
         return block.timestamp.sub(_delay);
     }
-
+    
     /**
      * @dev Validation of an incoming purchase.
      * @param _beneficiary Address performing the token purchase
@@ -420,4 +413,10 @@ contract SparksoICO is TokenVesting {
             );
         }
     }
+    
+    /**
+     * @dev Update current stage of the ICO.
+     * @dev Calculate the actual wei goal and define if the current stage need to increment
+     */
+    function _updatePurchasingState() pure internal {}
 }
