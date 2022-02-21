@@ -3,7 +3,7 @@ const { expect } = require("chai");
 const ICO_SUPPLY = 160679400;
 const RATE = [64866, 43244, 32433, 28829];
 
-const BONUS = [20, 15, 10, 0];
+const BONUS = [20, 15, 10, 0]; 
 
 describe("Sparsko ICO", function () {
   let Token;
@@ -22,6 +22,7 @@ describe("Sparsko ICO", function () {
     [owner, addr1, addr2, ...addrs] = await ethers.getSigners();
     testToken = await Token.deploy(owner.address);
     await testToken.deployed();
+    
   });
 
   describe("ICO", function () {
@@ -39,10 +40,9 @@ describe("Sparsko ICO", function () {
         testToken.address
       );
 
-      // send tokens ICO allocated
+      // send tokens to the ICO contract
       await expect(testToken.transfer(sparksoICO.address, ICO_SUPPLY))
         .to.emit(testToken, "Transfer")
-        .withArgs(wallet, sparksoICO.address, ICO_SUPPLY);
       const sparksoICOBalance = await testToken.balanceOf(sparksoICO.address);
       expect(sparksoICOBalance).to.equal(ICO_SUPPLY);
       expect(await sparksoICO.getWithdrawableAmount()).to.equal(ICO_SUPPLY);
@@ -55,13 +55,13 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
         .connect(beneficiary)
-        .buyTokens(beneficiary.address, {value: 100})
+        .buyTokens(beneficiary.address, {value: ethers.utils.parseEther("100")})
       ).to.be.revertedWith("Sparkso ICO: ICO didn't start.");
 
       // set current time to the open ICO
       await sparksoICO.setCurrentTime(openingTime);
 
-      // check that benefiaciary cannot purchased less token than the minimum requiered
+      // check that benefiaciary cannot purchased less token than the minimum requiered => OK
       await expect(
         sparksoICO
         .connect(beneficiary)
@@ -69,55 +69,85 @@ describe("Sparsko ICO", function () {
       ).to.be.revertedWith(
         "Sparkso ICO: Amount need to be superior to the minimum wei defined."
       );
-      // Calculate number of tokens bought
-      const tokens = (value) =>{
-        return value * RATE[0] * ( 1 + BONUS[0] );
-      } 
+
+      // check wei raised in the contract
+      expect(await sparksoICO.getVestingSchedulesTotalAmount()).to.equal(0);
 
       // purchase tokens
       await expect(
         sparksoICO
         .connect(beneficiary)
-        .buyTokens(beneficiary.address, {value: 1})
+        .buyTokens(beneficiary.address, {value: ethers.utils.parseEther("1")})
       ).to.emit(sparksoICO, "TokensPurchase");
 
       // check wei raised in the contract
-      expect(await sparksoICO.weiRaised()).to.equal(1);
+      expect(await sparksoICO.weiRaised()).to.equal(ethers.utils.parseEther("1"));
 
       // check the purchase addresses counter
       expect(await sparksoICO.countAdresses()).to.equal(1);
+
+      // check the wei raised
+      expect(await sparksoICO.weiRaised()).to.equal(ethers.utils.parseEther("1"));
 
       // check that beneficiary cannot purchase a second time
       expect(
         sparksoICO
         .connect(beneficiary)
-        .buyTokens(beneficiary.address, {value: 1})
+        .buyTokens(beneficiary.address, {value: ethers.utils.parseEther("1")})
       ).to.be.revertedWith(
         "Sparkso ICO: One transaction per wallet for the 500 first."
       );
 
       // set addresses counter to 501 and switch minimum wei for first stage
       await sparksoICO.setCountAddresses(501);
+      const beneficiary2 = addr2;
 
-      const value = 217;
+      const value = ethers.utils.parseEther("217");
       // purchase tokens
       await expect(
-        beneficiary.sendTransaction({ to: sparksoICO.address, value: value })
+        sparksoICO
+        .connect(beneficiary2)
+        .buyTokens(beneficiary2.address, {value: value})
       ).to.emit(sparksoICO, "TokensPurchase");
 
       // set time to release tokens
-      await sparksoICO.setCurrentTime(closingTime + 1);
+      await sparksoICO.setCurrentTime(closingTime + 10);
 
+      // first beneficiary
       // compute vesting schedule id
-      const vestingScheduleId =
+      var vestingScheduleId =
         await tokenVesting.computeVestingScheduleIdForAddressAndIndex(
           beneficiary.address,
           0
         );
 
+      // calculate the number of tokens beneficiary should be able to release 
+      var tokens = RATE[0] + RATE[0] * 0.3;
+
       // check that user can release all his tokens
       await expect(
-        tokenVesting.connect(beneficiary).release(vestingScheduleId, tokens)
+        sparksoICO.connect(beneficiary).release(vestingScheduleId, tokens)
+      )
+      .to.emit(testToken, "Transfer")
+      .withArgs(sparksoICO.address, beneficiary.address, tokens);
+
+      // check the balance of the beneficiary
+      expect(await testToken.balanceOf(beneficiary.address)).to.equal(tokens);
+
+      // second beneficiary
+      // compute vesting schedule id
+      vestingScheduleId =
+        await tokenVesting.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary2.address,
+          0
+        );
+
+      // calculate the number of tokens beneficiary should be able to release 
+      tokens = 217 * RATE[0] * ( 1 + BONUS[0] );
+
+      // check that user can release all his tokens
+      await expect(
+        sparksoICO.connect(beneficiary).release(vestingScheduleId, tokens)
       )
       .to.emit(testToken, "Transfer")
       .withArgs(sparksoICO.address, beneficiary.address, tokens);

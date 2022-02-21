@@ -4,6 +4,7 @@ pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./TokenVesting.sol";
 
@@ -28,21 +29,18 @@ contract SparksoICO is TokenVesting {
 
     // Stages of the ICO
     uint8 public constant STAGES = 4;
-    
+
     // Manage the current stage of the ICO
     uint8 private _currentStage = 0;
 
     // Count first 500 purchases
     uint16 private _countAdresses = 0;
 
-    // Delay the ICO _colsingTime 
+    // Delay the ICO _colsingTime
     uint256 private _delay = 0;
 
     // Total amount wei raised
     uint256 private _weiRaised = 0;
-
-    // Ico total supply
-    uint256 public constant ICO_SUPPLY = 160679400;
 
     // Rate is different for each stages.
     // The rate is the conversion between wei and the smallest and indivisible token unit.
@@ -74,7 +72,7 @@ contract SparksoICO is TokenVesting {
     uint256 private _closingTime;
 
     // First 500 addresses purchasing tokens
-    mapping(address => bool) private _firstAddresses;
+    mapping(address => uint8) private _firstAddresses;
 
     // Purchased cliff or not
     bool private _cliff;
@@ -99,6 +97,17 @@ contract SparksoICO is TokenVesting {
         bool cliff,
         bool vesting
     );
+
+    /**
+    * @dev Reverts if the beneficiary has already purchase whithin the first 500.
+    */
+    modifier onlyOnePurchase(address _beneficiary){
+        require(
+            _firstAddresses[_beneficiary] == 0, 
+            "Sparkso ICO: One transaction per wallet for the 500 first."
+        );
+        _;
+    }
 
     constructor(address payable wallet_, address token_) TokenVesting(token_) {
         require(
@@ -128,7 +137,7 @@ contract SparksoICO is TokenVesting {
             0.19 * 10**18, // Stage 1 first 500 people
             0.08 * 10**18
         ];
-        
+
         // Calculate _weiGoal
         for (uint8 i = 0; i < STAGES; i++) _weiGoal += _weiGoals[i];
 
@@ -143,8 +152,8 @@ contract SparksoICO is TokenVesting {
         _slicePeriod = 10 * 24 * 3600;
 
         // Input value timestamp in second of the opening ICO time
-        _openingTime = 1646485200; // The 5th march 2022 
-        _closingTime = _openingTime.add(monthSecond.mul(3));
+        _openingTime = 1646485200; // The 5th march 2022
+        _closingTime = _openingTime.add(monthSecond.mul(3).mul(1000));
 
         // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
         _cliff = false;
@@ -155,12 +164,7 @@ contract SparksoICO is TokenVesting {
     /**
      * @dev fallback function ***DO NOT OVERRIDE***
      */
-    fallback() 
-        external 
-        payable 
-        virtual
-        override 
-    {
+    fallback() external payable virtual override {
         buyTokens(msg.sender);
     }
 
@@ -171,88 +175,56 @@ contract SparksoICO is TokenVesting {
     /**
      * @return the count of addresses
      */
-    function countAdresses() 
-        external 
-        view
-        returns (uint16)
-    {
+    function countAdresses() external view returns (uint16) {
         return _countAdresses;
     }
 
     /**
      * @return the total amount wei raised.
      */
-    function weiRaised() 
-        external 
-        view 
-        returns (uint256) 
-    {
+    function weiRaised() external view returns (uint256) {
         return _weiRaised;
     }
 
     /**
      * @return the current stage of the ICO.
      */
-    function currentStage() 
-        external 
-        view 
-        returns (uint8) 
-    {
+    function currentStage() external view returns (uint8) {
         return _currentStage;
     }
 
     /**
      * @return the number of token units a buyer gets per wei for each stages.
      */
-    function rate() 
-        external 
-        view 
-        returns (uint256[4] memory) 
-    {
+    function rate() external view returns (uint256[4] memory) {
         return _rate;
     }
 
     /**
      * @return the number of tokens allocated for each stages
      */
-    function weiGoals() 
-        external 
-        view 
-        returns (uint256[4] memory) 
-    {
+    function weiGoals() external view returns (uint256[4] memory) {
         return _weiGoals;
     }
 
     /**
      * @return the bonus for each stages
      */
-    function bonus() 
-        external 
-        view 
-        returns (uint8[4] memory) 
-    {
+    function bonus() external view returns (uint8[4] memory) {
         return _bonus;
     }
 
     /**
      * @return the ICO openingTime
      */
-    function openingTime() 
-        external 
-        view 
-        returns (uint256) 
-    {
+    function openingTime() external view returns (uint256) {
         return _openingTime;
     }
 
     /**
      * @return the ICO closingTime
      */
-    function closingTime() 
-        external 
-        view 
-        returns (uint256) 
-    {
+    function closingTime() external view returns (uint256) {
         return _closingTime.add(_delay);
     }
 
@@ -260,10 +232,7 @@ contract SparksoICO is TokenVesting {
      * @dev low level token purchase
      * @param _beneficiary Address performing the token purchase
      */
-    function buyTokens(address _beneficiary) 
-        public 
-        payable 
-    {
+    function buyTokens(address _beneficiary) public payable {
         uint256 weiAmount = msg.value;
         _preValidatePurchase(_beneficiary, weiAmount);
 
@@ -293,11 +262,7 @@ contract SparksoICO is TokenVesting {
      * @dev Delay the ICO _closingTime
      * @param _timeToDelay Add a time delay in seconds
      */
-    function delayICO(uint256 _timeToDelay) 
-        public 
-        nonReentrant
-        onlyOwner 
-    {
+    function delayICO(uint256 _timeToDelay) public nonReentrant onlyOwner {
         require(
             _timeToDelay > 0,
             "Sparkso ICO: the delay need to be superior to 0."
@@ -313,28 +278,35 @@ contract SparksoICO is TokenVesting {
     /**
      * @dev Determines how ETH is stored/forwarded on purchases.
      */
-    function _forwardFunds() 
-        internal 
-    {
+    function _forwardFunds() internal {
         _wallet.transfer(msg.value);
     }
 
     /**
-     * @dev Validation of an executed purchase.
+     * @dev Update ICO stage and add addresses if it is 500 first purchase
      * @param _beneficiary Address performing the token purchase
      */
-    function _postValidatePurchase(address _beneficiary)
-        internal
-    {
+    function _postValidatePurchase(address _beneficiary) internal {
         // Add address if in the 500 first buyers
         if (_getCountAddresses() < 500) {
-            _firstAddresses[_beneficiary] = true;
+            _firstAddresses[_beneficiary] = 1;
             _countAdresses++;
+        }
+
+        uint256 weiGoal = 0;
+        for (uint8 i = 0; i <= _currentStage; i++) weiGoal = weiGoal.add(_weiGoals[i]);
+        
+        if (_weiRaised >= weiGoal && _currentStage < STAGES) {
+            _currentStage++;
+            // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
+            _cliff = _currentStage >= 2 ? true : false;
+            // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
+            _vest = _currentStage != 0 ? true : false;
         }
     }
 
     /**
-     * @dev Source of tokens.
+     * @dev Create a vesting schedule starting at the closing time of the ICO
      * @param _beneficiary Address performing the token purchase
      * @param _tokenAmount Number of tokens to be emitted
      */
@@ -367,22 +339,10 @@ contract SparksoICO is TokenVesting {
     }
 
     /**
-     * @dev Update current stage of the ICO
+     * @dev Update current stage of the ICO.
+     * @dev Calculate the actual wei goal and define if the current stage need to increment
      */
-    function _updatePurchasingState()
-        internal
-    {
-        uint256 weiGoal = 0;
-        for (uint8 i = 0; i < _currentStage; i++) weiGoal += _weiGoals[i];
-
-        if (_weiRaised >= weiGoal && _currentStage < STAGES) {
-            _currentStage++;
-            // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
-            _cliff = _currentStage >= 2 ? true : false;
-            // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
-            _vest = _currentStage != 0 ? true : false;
-        }
-    }
+    function _updatePurchasingState() internal {}
 
     /**
      * @dev Calculate the number of tokens depending on current ICO stage with corresponding rate and bonus
@@ -394,33 +354,30 @@ contract SparksoICO is TokenVesting {
         view
         returns (uint256)
     {
+        uint256 weiAmount = _weiAmount.div(10**18);
         uint256 rate_ = _rate[_currentStage];
-        uint256 tokens = _weiAmount.mul(rate_);
-        uint256 bonus_ = _getCountAddresses() > 500 ? tokens.mul(_bonus[_currentStage]) : tokens.mul(30);
-        return tokens.add(bonus_.div(100));
+        uint256 tokens = weiAmount.mul(rate_);
+        uint256 bonus_ = _getCountAddresses() > 500
+            ? tokens.mul(_bonus[_currentStage])
+            : tokens.mul(30); // 500 first bonus equal to 30%
+        return tokens.add(bonus_.div(10));
     }
 
     /**
-     * @return the number of people (within the 500 ones) who purchased tokens 
+     * @return the number of people (within the 500 ones) who purchased tokens
      */
-    function _getCountAddresses()
-        internal
-        virtual
-        view
-        returns(uint256){
-            return _countAdresses;
-        }
+    function _getCountAddresses() internal view virtual returns (uint256) {
+        return _countAdresses;
+    }
 
-    function getCurrentTime()
-        internal
-        override
-        virtual
-        view
-        returns(uint256){
+    /**
+     * @return current time minus the actual delay to control the closing times
+     */
+    function getCurrentTime() internal view virtual override returns (uint256) {
         return block.timestamp.sub(_delay);
     }
 
-     /**
+    /**
      * @dev Validation of an incoming purchase.
      * @param _beneficiary Address performing the token purchase
      * @param _weiAmount Value in wei involved in the purchase
@@ -428,9 +385,10 @@ contract SparksoICO is TokenVesting {
     function _preValidatePurchase(address _beneficiary, uint256 _weiAmount)
         internal
         view
+        onlyOnePurchase(_beneficiary)
     {
         require(
-            _beneficiary != address(0),
+            _beneficiary != address(0x0),
             "Sparkso ICO: beneficiary address should be defined."
         );
         require(
@@ -443,26 +401,23 @@ contract SparksoICO is TokenVesting {
         );
         require(
             _weiRaised < _weiGoal,
-            "Sparkso ICO: ICO is now closed, all funds are raised."  
+            "Sparkso ICO: ICO is now closed, all funds are raised."
         );
 
         if (_currentStage > 0)
             require(
-                _weiAmount >= 0,
+                _weiAmount > 0,
                 "Sparkso ICO: Amount need to be superior to 0."
             );
         else {
-            // One transaction authorized for the 500 first per wallet
-            require(
-                (_getCountAddresses() < 500 && !_firstAddresses[_beneficiary]) || (_getCountAddresses() >= 500),
-                "Sparkso ICO: One transaction per wallet for the 500 first."
-            );
             // Minimum wei for the first 500 people else the second minimum wei
-            uint256 minWei = _getCountAddresses() < 500 ? _minWei[0] : _minWei[1];
+            uint256 minWei = _getCountAddresses() < 500
+                ? _minWei[0]
+                : _minWei[1];
             require(
                 _weiAmount >= minWei,
                 "Sparkso ICO: Amount need to be superior to the minimum wei defined."
             );
         }
-    }    
+    }
 }

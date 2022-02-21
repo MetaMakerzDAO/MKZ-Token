@@ -135,54 +135,6 @@ contract TokenVesting is Ownable, ReentrancyGuard{
     }
 
     /**
-    * @notice Creates a new vesting schedule for a beneficiary.
-    * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
-    * @param _start start time of the vesting period
-    * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
-    * @param _duration duration in seconds of the period in which the tokens will vest
-    * @param _slicePeriodSeconds duration of a slice period for the vesting in seconds
-    * @param _revocable whether the vesting is revocable or not
-    * @param _amount total amount of tokens to be released at the end of the vesting
-    */
-    function createVestingSchedule(
-        address _beneficiary,
-        uint256 _start,
-        uint256 _cliff,
-        uint256 _duration,
-        uint256 _slicePeriodSeconds,
-        bool _revocable,
-        uint256 _amount
-    )
-        public
-        onlyOwner{
-        require(
-            this.getWithdrawableAmount() >= _amount,
-            "TokenVesting: cannot create vesting schedule because not sufficient tokens"
-        );
-        require(_duration > 0, "TokenVesting: duration must be > 0");
-        require(_amount > 0, "TokenVesting: amount must be > 0");
-        require(_slicePeriodSeconds >= 1, "TokenVesting: slicePeriodSeconds must be >= 1");
-        bytes32 vestingScheduleId = this.computeNextVestingScheduleIdForHolder(_beneficiary);
-        uint256 cliff = _start.add(_cliff);
-        vestingSchedules[vestingScheduleId] = VestingSchedule(
-            true,
-            _beneficiary,
-            cliff,
-            _start,
-            _duration,
-            _slicePeriodSeconds,
-            _revocable,
-            _amount,
-            0,
-            false
-        );
-        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount.add(_amount);
-        vestingSchedulesIds.push(vestingScheduleId);
-        uint256 currentVestingCount = holdersVestingCount[_beneficiary];
-        holdersVestingCount[_beneficiary] = currentVestingCount.add(1);
-    }
-
-    /**
     * @notice Revokes the vesting schedule for given identifier.
     * @param vestingScheduleId the vesting schedule identifier
     */
@@ -316,6 +268,54 @@ contract TokenVesting is Ownable, ReentrancyGuard{
         return keccak256(abi.encodePacked(holder, index));
     }
 
+     /**
+    * @notice Creates a new vesting schedule for a beneficiary.
+    * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
+    * @param _start start time of the vesting period
+    * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
+    * @param _duration duration in seconds of the period in which the tokens will vest
+    * @param _slicePeriodSeconds duration of a slice period for the vesting in seconds
+    * @param _revocable whether the vesting is revocable or not
+    * @param _amount total amount of tokens to be released at the end of the vesting
+    */
+    function createVestingSchedule(
+        address _beneficiary,
+        uint256 _start,
+        uint256 _cliff,
+        uint256 _duration,
+        uint256 _slicePeriodSeconds,
+        bool _revocable,
+        uint256 _amount
+    )
+        internal
+    {
+        require(_duration > 0, "TokenVesting: duration must be > 0");
+        require(_amount > 0, "TokenVesting: amount must be > 0");
+        require(_slicePeriodSeconds >= 1, "TokenVesting: slicePeriodSeconds must be >= 1");
+         require(
+            this.getWithdrawableAmount() >= _amount,
+            "TokenVesting: cannot create vesting schedule because not sufficient tokens"
+        );
+        bytes32 vestingScheduleId = this.computeNextVestingScheduleIdForHolder(_beneficiary);
+        uint256 cliff = _start.add(_cliff);
+        vestingSchedules[vestingScheduleId] = VestingSchedule(
+            true,
+            _beneficiary,
+            cliff,
+            _start,
+            _duration,
+            _slicePeriodSeconds,
+            _revocable,
+            _amount,
+            0,
+            false
+        );
+        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount.add(_amount);
+        vestingSchedulesIds.push(vestingScheduleId);
+        uint256 currentVestingCount = holdersVestingCount[_beneficiary];
+        holdersVestingCount[_beneficiary] = currentVestingCount.add(1);
+    }
+
     /**
     * @dev Computes the releasable amount of tokens for a vesting schedule.
     * @return the amount of releasable tokens
@@ -347,5 +347,4 @@ contract TokenVesting is Ownable, ReentrancyGuard{
         returns(uint256){
         return block.timestamp;
     }
-
 }
