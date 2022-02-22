@@ -1,7 +1,7 @@
 {
   "name": "sparkso-ico",
-  "version": "0.0.1",
-  "description": "ERC20 Token Vesting Smart Contracts",
+  "version": "1.0.0",
+  "description": "ERC20 Crowdsale and Token Vesting Smart Contracts",
   "main": "index.js",
   "scripts": {
     "prettier": "npx prettier --write .",
@@ -12,6 +12,8 @@
     "check:format": "solhint contracts/*.sol --fix",
     "deploy:mainnet": "npx hardhat run scripts/deploy.js --network mainnet",
     "deploy:goerli": "npx hardhat run scripts/deploy.js --network goerli",
+    "deploy:avax:mainnet": "npx hardhat run scripts/deploy.js --network avaxMainnet",
+    "deploy:avax:fuji": "npx hardhat run scripts/deploy.js --network avaxFuji",
     "deploy:bsc:mainnet": "npx hardhat run scripts/deploy.js --network bscMainnet",
     "deploy:bsc:testnet": "npx hardhat run scripts/deploy.js --network bscTestnet",
     "tools:surya:graph": "surya graph ./contracts/**/*.sol | dot -Tpng > build/TokenVesting.png",
@@ -23,21 +25,20 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/abdelhamidbakhta/token-vesting-contracts.git"
+    "url": "git+https://github.com/vachmara/sparkso-token.git"
   },
   "keywords": [
     "ERC20",
     "Ethereum",
     "Solidity",
     "Smart+Contracts",
-    "Blockchain"
+    "Blockchain",
+    "ICO",
+    "Sparkso"
   ],
-  "author": "Abdelhamid Bakhta",
+  "author": "Valentin Chmara",
   "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/abdelhamidbakhta/token-vesting-contracts/issues"
-  },
-  "homepage": "https://github.com/abdelhamidbakhta/token-vesting-contracts#readme",
+  "homepage": "https://github.com/vachmara/sparkso-token#readme",
   "dependencies": {
     "@openzeppelin/contracts": "^4.1.0",
     "prettier": "^2.3.0",

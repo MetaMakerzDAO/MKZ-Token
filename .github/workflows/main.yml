@@ -29,7 +29,6 @@ jobs:
         run: yarn --frozen-lockfile
       - name: Compile smart contracts
         env:
-          GOERLI_ENDPOINT: ${{ secrets.GOERLI_ENDPOINT }}
-          GOERLI_PRIVATE_KEY: ${{ secrets.GOERLI_PRIVATE_KEY }}
+          FUJI_PRIVATE_KEY: ${{ secrets.FUJI_PRIVATE_KEY }}
         run: yarn compile
       - run: yarn test

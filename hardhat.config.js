@@ -27,6 +27,8 @@ module.exports = {
     goerli: goerliNetworkConfig(),
     bscMainnet: bscMainnetNetworkConfig(),
     bscTestnet: bscTestnetNetworkConfig(),
+    avaxMainnet: avaxMainnetNetworkConfig(),
+    avaxFuji: avaxFujiNetworkConfig(),
   },
   abiExporter: {
     path: "./build/abi",
@@ -111,6 +113,42 @@ function bscTestnetNetworkConfig() {
 
   if (process.env.BSC_TESTNET_PRIVATE_KEY) {
     accountPrivateKey = `${process.env.BSC_TESTNET_PRIVATE_KEY}`;
+  }
+
+  return {
+    url: url,
+    accounts: [accountPrivateKey],
+  };
+}
+
+function avaxMainnetNetworkConfig(){
+  let url = "https://api.avax.network/ext/bc/C/rpc";
+  let accountPrivateKey =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
+  if (process.env.AVAX_MAINNET_ENDPOINT) {
+    url = `${process.env.AVAX_MAINNET_ENDPOINT}`;
+  }
+
+  if (process.env.AVAX_MAINNET_PRIVATE_KEY) {
+    accountPrivateKey = `${process.env.AVAX_MAINNET_PRIVATE_KEY}`;
+  }
+
+  return {
+    url: url,
+    accounts: [accountPrivateKey],
+  };
+}
+
+function avaxFujiNetworkConfig(){
+  let url = "https://api.avax-test.network/ext/bc/C/rpc";
+  let accountPrivateKey =
+    "0x0000000000000000000000000000000000000000000000000000000000000000";
+  if (process.env.AVAX_FUJI_ENDPOINT) {
+    url = `${process.env.AVAX_FUJI_ENDPOINT}`;
+  }
+
+  if (process.env.AVAX_FUJI_PRIVATE_KEY) {
+    accountPrivateKey = `${process.env.AVAX_FUJI_PRIVATE_KEY}`;
   }
 
   return {
