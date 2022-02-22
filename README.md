@@ -1,3 +1,4 @@
+[![Actions Status](https://github.com/vachmara/sparkso-token/workflows/main/badge.svg)](https://github.com/vachmara/sparkso-token/actions)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg)](https://github.com/prettier/prettier)
 [![license](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
@@ -37,7 +38,7 @@ ABI files will be automatically exported in `build/abi` directory.
 
 ### 📚 Documentation
 
-Documentation is auto-generated after each build in `docs` directory.
+Documentation is auto-generated after each build in [`docs`](https://vachmara.github.io/sparkso-token/docs) directory.
 
 The generated output is a static website containing smart contract documentation.
 
@@ -53,7 +54,7 @@ $ yarn test
 $ yarn coverage
 ```
 
-The report will be printed in the console and a static website containing full report will be generated in `coverage` directory.
+The report will be printed in the console and a static website containing full report will be generated in [`coverage`](https://vachmara.github.io/sparkso-token/coverage) directory.
 
 ### ✨ Code style
 
