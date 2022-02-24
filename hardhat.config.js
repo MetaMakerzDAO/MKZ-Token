@@ -27,8 +27,8 @@ module.exports = {
     goerli: goerliNetworkConfig(),
     bscMainnet: bscMainnetNetworkConfig(),
     bscTestnet: bscTestnetNetworkConfig(),
-    avaxMainnet: avaxMainnetNetworkConfig(),
-    avaxFuji: avaxFujiNetworkConfig(),
+    polygonMainnet: polygonMainnetNetworkConfig(),
+    polygonMumbai: polygonMumbaiNetworkConfig(),
   },
   abiExporter: {
     path: "./build/abi",
@@ -121,39 +121,39 @@ function bscTestnetNetworkConfig() {
   };
 }
 
-function avaxMainnetNetworkConfig(){
-  let url = "https://api.avax.network/ext/bc/C/rpc";
+function polygonMainnetNetworkConfig(){
+  let url = "https://polygon-mainnet.g.alchemy.com/v2/";
   let accountPrivateKey =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
-  if (process.env.AVAX_MAINNET_ENDPOINT) {
-    url = `${process.env.AVAX_MAINNET_ENDPOINT}`;
+    "";
+  if (process.env.POLYGON_MAINNET_ENDPOINT) {
+    url = `${process.env.POLYGON_MAINNET_ENDPOINT}`;
   }
 
-  if (process.env.AVAX_MAINNET_PRIVATE_KEY) {
-    accountPrivateKey = `${process.env.AVAX_MAINNET_PRIVATE_KEY}`;
+  if (process.env.POLYGON_MAINNET_PRIVATE_KEY) {
+    accountPrivateKey = `${process.env.POLYGON_MAINNET_PRIVATE_KEY}`;
   }
 
   return {
     url: url,
-    accounts: [accountPrivateKey],
+    accounts: {mnemonic: accountPrivateKey},
   };
 }
 
-function avaxFujiNetworkConfig(){
-  let url = "https://api.avax-test.network/ext/bc/C/rpc";
+function polygonMumbaiNetworkConfig(){
+  let url = "https://polygon-mumbai.g.alchemy.com/v2/";
   let accountPrivateKey =
-    "0x0000000000000000000000000000000000000000000000000000000000000000";
-  if (process.env.AVAX_FUJI_ENDPOINT) {
-    url = `${process.env.AVAX_FUJI_ENDPOINT}`;
+    "";
+  if (process.env.POLYGON_MUMBAI_ENDPOINT) {
+    url = `${process.env.POLYGON_MUMBAI_ENDPOINT}`;
   }
 
-  if (process.env.AVAX_FUJI_PRIVATE_KEY) {
-    accountPrivateKey = `${process.env.AVAX_FUJI_PRIVATE_KEY}`;
+  if (process.env.POLYGON_MUMBAI_PRIVATE_KEY) {
+    accountPrivateKey = `${process.env.POLYGON_MUMBAI_PRIVATE_KEY}`;
   }
 
   return {
     url: url,
-    accounts: [accountPrivateKey],
+    accounts: {mnemonic: accountPrivateKey},
   };
 }
 

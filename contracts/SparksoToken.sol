@@ -26,6 +26,6 @@ contract Sparkso is ERC20 {
     constructor(address payable wallet_) ERC20(NAME, SYMBOL) {
         require(wallet_ != address(0), "Sparkso token: wallet is the zero address");
         wallet = wallet_;
-        _mint(wallet_, _totalSupply * 10 ^ DECIMALS);
+        _mint(wallet_, (_totalSupply * 10 ** DECIMALS));
     }
 }
