@@ -6,7 +6,7 @@
 
 ## Overview
 
-Fork [Token vesting contracts](https://github.com/abdelhamidbakhta/token-vesting-contracts/) to build ICO mechanism for [Sparkso]() project.
+Fork [Token vesting contracts](https://github.com/abdelhamidbakhta/token-vesting-contracts/) to build ICO mechanism for [Sparkso](https://www.sparkso.io) project.
 
 `TokenVesting` contract can release its token balance gradually like a typical vesting scheme, with a cliff and vesting period.
 Optionally revocable by the owner.
