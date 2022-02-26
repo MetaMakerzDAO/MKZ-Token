@@ -5,6 +5,7 @@ pragma solidity ^0.8.11;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./TokenVesting.sol";
 
 /**
@@ -14,12 +15,16 @@ contract SparksoICO is TokenVesting {
     using SafeMath for uint256;
     using SafeMath for uint8;
     using SafeERC20 for IERC20;
+    using ECDSA for bytes32;
 
     // address of the ERC20 token
     IERC20 private immutable _token;
 
     // Address where funds are collected
     address payable private _wallet;
+
+    // Backend address use to sign and authentificate user purchase
+    address private _systemAddress;
 
     // Bonus is a percentage of your token purchased in addition to your given tokens.
     // If bonus is 30% you will have : number_tokens + number_tokens * (30 / 100)
@@ -108,7 +113,25 @@ contract SparksoICO is TokenVesting {
         _;
     }
 
-    constructor(address payable wallet_, address token_) TokenVesting(token_) {
+    /**
+    * @dev Reverts if the purchase is not sign by the backend system wallet address
+    */
+    modifier onlyValidSignature(uint256 timestamp, bytes memory signature){
+        // Encode the msg.sender with the timestamp to 
+        bytes32 msgHash = keccak256(abi.encodePacked(msg.sender, timestamp));
+        bytes32 signedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash));
+        require(
+            signedHash.recover(signature) == _systemAddress,
+            "Sparkso ICO: Invalid purchase signature."
+        );
+        _;
+    }
+
+    constructor(address systemAddress_, address payable wallet_, address token_) TokenVesting(token_) {
+        require(
+            systemAddress_ != address(0x0),
+            "Sparkso ICO: system address is the zero address"
+        );
         require(
             wallet_ != address(0x0),
             "Sparkso ICO: wallet is the zero address"
@@ -118,6 +141,7 @@ contract SparksoICO is TokenVesting {
             "Sparkso ICO: token contract is the zero address"
         );
 
+        _systemAddress = systemAddress_;
         _wallet = wallet_;
         _token = IERC20(token_);
 
@@ -158,13 +182,6 @@ contract SparksoICO is TokenVesting {
         _cliff = false;
         // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
         _vest = false;
-    }
-
-    /**
-     * @dev fallback function ***DO NOT OVERRIDE***
-     */
-    fallback() external payable virtual override {
-        buyTokens(msg.sender);
     }
 
     // -----------------------------------------
@@ -230,8 +247,14 @@ contract SparksoICO is TokenVesting {
     /**
      * @dev low level token purchase
      * @param _beneficiary Address performing the token purchase
+     * @param _timestamp Timestamp + msg.sender address use to build signature
+     * @param _signature Signature need to be sign by system wallet
      */
-    function buyTokens(address _beneficiary) public payable {
+    function buyTokens(address _beneficiary, uint256 _timestamp, bytes memory _signature) 
+        public 
+        payable 
+        onlyValidSignature(_timestamp, _signature)
+    {
         uint256 weiAmount = msg.value;
         _preValidatePurchase(_beneficiary, weiAmount);
 
@@ -267,7 +290,7 @@ contract SparksoICO is TokenVesting {
             "Sparkso ICO: the delay need to be superior to 0."
         );
         // Convert the delay time into seconds and add to the current delay
-        _delay = _delay.add(_timeToDelay.mul(1000));
+        _delay = _delay.add(_timeToDelay);
     }
 
     // -----------------------------------------

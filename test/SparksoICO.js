@@ -1,4 +1,5 @@
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 
 const ICO_SUPPLY = 160679400;
 
@@ -6,6 +7,7 @@ describe("Sparsko ICO", function () {
   let Token;
   let testToken;
   let SparksoICO;
+  let systemAddress;
   let owner;
   let addr1;
   let addr2;
@@ -19,7 +21,7 @@ describe("Sparsko ICO", function () {
     SparksoICO = await ethers.getContractFactory("MockSparksoICO");
   });
   beforeEach(async function () {
-    [owner, addr1, addr2, addr3, addr4, addr5, ...addrs] =
+    [owner, systemAddress, addr1, addr2, addr3, addr4, addr5, ...addrs] =
       await ethers.getSigners();
     testToken = await Token.deploy(owner.address);
     await testToken.deployed();
@@ -32,9 +34,22 @@ describe("Sparsko ICO", function () {
     });
 
     it("Should purchase token at each stage of the ICO", async function () {
+
+      const buildSignature = async (beneficiary, timestamp) => {
+        let hashBinary = ethers.utils.arrayify(
+          ethers.utils.solidityKeccak256(
+            ["address", "uint"],
+            [beneficiary.address, timestamp]
+          )
+        )
+        return await systemAddress.signMessage(hashBinary)
+      }
+
+
       const wallet = owner.address;
+
       // deploy ICO contract
-      const sparksoICO = await SparksoICO.deploy(testToken.address, wallet);
+      const sparksoICO = await SparksoICO.deploy(systemAddress.address, wallet, testToken.address);
       await sparksoICO.deployed();
       expect((await sparksoICO.getToken()).toString()).to.equal(
         testToken.address
@@ -49,15 +64,24 @@ describe("Sparsko ICO", function () {
       expect(sparksoICOBalance).to.equal(ICO_SUPPLY);
       expect(await sparksoICO.getWithdrawableAmount()).to.equal(ICO_SUPPLY);
 
-      const openingTime = 1646485200;
+      const openingTime = 1646485200; // Use to build signature, only for testing purpose
       const closingTime = openingTime + 4 * 30 * 24 * 3600; //By default 4 months
       const beneficiary = addr1;
+
+      // check that only people with a proper signature can interact with the buyTokens function
+      await expect(
+        sparksoICO
+          .connect(beneficiary)
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, 0), {
+            value: ethers.utils.parseEther("100"),
+          })
+      ).to.be.revertedWith("Sparkso ICO: Invalid purchase signature.");
 
       // check that is it not possible to purchase token before opening time
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, {
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime), {
             value: ethers.utils.parseEther("100"),
           })
       ).to.be.revertedWith("Sparkso ICO: ICO didn't start.");
@@ -69,7 +93,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, { value: 0 })
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime), { value: 0 })
       ).to.be.revertedWith(
         "Sparkso ICO: Amount need to be superior to the minimum wei defined."
       );
@@ -81,7 +105,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, {
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime),{
             value: ethers.utils.parseEther("1"),
           })
       ).to.emit(sparksoICO, "TokensPurchase");
@@ -98,7 +122,7 @@ describe("Sparsko ICO", function () {
       expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, {
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime), {
             value: ethers.utils.parseEther("1"),
           })
       ).to.be.revertedWith(
@@ -114,7 +138,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary2)
-          .buyTokens(beneficiary2.address, { value: value })
+          .buyTokens(beneficiary2.address, openingTime, buildSignature(beneficiary2, openingTime), { value: value })
       ).to.emit(sparksoICO, "TokensPurchase");
 
       const beneficiary3 = addr3;
@@ -123,7 +147,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary3)
-          .buyTokens(beneficiary3.address, { value: value })
+          .buyTokens(beneficiary3.address, openingTime, buildSignature(beneficiary3, openingTime), { value: value })
       ).to.emit(sparksoICO, "TokensPurchase");
 
       const beneficiary4 = addr4;
@@ -133,7 +157,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary4)
-          .buyTokens(beneficiary4.address, { value: value })
+          .buyTokens(beneficiary4.address, openingTime, buildSignature(beneficiary4, openingTime), { value: value })
       ).to.emit(sparksoICO, "TokensPurchase");
 
       const beneficiary5 = addr5;
@@ -143,7 +167,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary5)
-          .buyTokens(beneficiary5.address, { value: value })
+          .buyTokens(beneficiary5.address, openingTime, buildSignature(beneficiary5, openingTime), { value: value })
       ).to.emit(sparksoICO, "TokensPurchase");
 
       // set time to closing time to release tokens
@@ -214,6 +238,7 @@ describe("Sparsko ICO", function () {
       // change time to first slice of the third beneficiary, he should be able to release tokens
       await sparksoICO.setCurrentTime(closingTime + 10 * 24 * 3600);
 
+      // check beneficiary 3 could release first slice of this vesting 
       var releasableTokens = await sparksoICO.computeReleasableAmount(
         vestingScheduleId
       );
@@ -273,7 +298,7 @@ describe("Sparsko ICO", function () {
           0
         );
 
-      // check that the third beneficiary could release the rest of his tokens
+      // check that the fifth beneficiary could release the rest of his tokens
       await expect(
         sparksoICO.connect(beneficiary5).release(vestingScheduleId, b5_tokens)
       )
@@ -284,6 +309,7 @@ describe("Sparsko ICO", function () {
        * TEST SUMMARY
        * deploy ICO contract
        * send tokens to the ICO contract
+       * check that only people with a proper signature can interact with the buyTokens function
        * check that is it not possible to purchase token before opening time
        * check that benefiaciary cannot purchased less token than the minimum requiered
        * check wei raised in the contract is equal to 0
@@ -302,14 +328,29 @@ describe("Sparsko ICO", function () {
        * check that second beneficiary can release all his tokens bought at the first ICO stage
        * check the balance of the second beneficiary
        * beneficiary 3 should not be able to release his token until the cliff + slice period
+       * check beneficiary 3 could release first slice of this vesting 
        * should revert the fourth beneficiary attempt to relase tokens because of the cliff period
        * check that the fourth beneficiary could release all his tokens
+       * check that the third beneficiary could release the rest of his tokens
+       * check that the fifth beneficiary could release the rest of his tokens
        */
     });
     it("Should check TokenVesting contract functions", async function () {
+
+      const buildSignature = async (beneficiary, timestamp) => {
+        let hashBinary = ethers.utils.arrayify(
+          ethers.utils.solidityKeccak256(
+            ["address", "uint"],
+            [beneficiary.address, timestamp]
+          )
+        )
+        return await systemAddress.signMessage(hashBinary)
+      }
+
+
       const wallet = owner.address;
       // deploy ICO contract
-      const sparksoICO = await SparksoICO.deploy(testToken.address, wallet);
+      const sparksoICO = await SparksoICO.deploy(systemAddress.address, wallet, testToken.address);
       await sparksoICO.deployed();
       expect((await sparksoICO.getToken()).toString()).to.equal(
         testToken.address
@@ -339,7 +380,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, {
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime), {
             value: ethers.utils.parseEther("1"),
           })
       ).to.emit(sparksoICO, "TokensPurchase");
