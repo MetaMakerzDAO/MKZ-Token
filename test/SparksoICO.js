@@ -1,7 +1,28 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 
-const ICO_SUPPLY = 160679400;
+const ICO_SUPPLY = 160679400; 
+
+const TOKENS_ALLOCATED = [
+  14070000 * 10**18,
+  35175000 * 10**18,
+  42210000 * 10**18,
+  49245000 * 10**18
+];
+
+const WEI_GOALS = [
+  217  * 10**18, // Stage 1 wei goal (ETH or chain governance currency)
+  813 * 10**18, // Stage 2 wei goal (ETH or chain governance currency)
+  1301 * 10**18, // Stage 3 wei goal (ETH or chain governance currency)
+  1708 * 10**18 // Stage 4 wei goal (ETH or chain governance currency)
+];
+
+const BONUS = [20, 15, 10, 0];
+
+const calcTokens = (tokens_allocated, wei_goal, bonus) => {
+  let tokens = parseInt(tokens_allocated/wei_goal);
+  return tokens + parseInt(tokens * 0.01 * bonus);
+}
 
 describe("Sparsko ICO", function () {
   let Token;
@@ -182,7 +203,7 @@ describe("Sparsko ICO", function () {
         );
 
       // the number of tokens beneficiary should be able to release
-      var tokens = 84325;
+      var tokens = 1 * calcTokens(TOKENS_ALLOCATED[0], WEI_GOALS[0], 30); // 30% bonus for first beneficiary
 
       // check that vested amount is equal to all the tokens bought at the first ICO stage
       expect(
@@ -208,7 +229,7 @@ describe("Sparsko ICO", function () {
         );
 
       // the number of tokens beneficiary should be able to release
-      tokens = 16891106;
+      tokens = 217 * calcTokens(TOKENS_ALLOCATED[0], WEI_GOALS[0], BONUS[0]);
 
       // check that second beneficiary can release all his tokens bought at the first ICO stage
       await expect(
@@ -227,7 +248,7 @@ describe("Sparsko ICO", function () {
           0
         );
 
-      const b3_tokens = 40381247;
+      const b3_tokens = 40400857;//812 * calcTokens(TOKENS_ALLOCATED[1], WEI_GOALS[1], BONUS[1]);
       // beneficiary 3 should not be able to release his token until the cliff + slice period
       await expect(
         sparksoICO.connect(beneficiary3).release(vestingScheduleId, b3_tokens)
@@ -242,9 +263,9 @@ describe("Sparsko ICO", function () {
       var releasableTokens = await sparksoICO.computeReleasableAmount(
         vestingScheduleId
       );
-      expect(releasableTokens).to.equal(Math.round(b3_tokens / 9));
+      expect(releasableTokens).to.equal(Math.round(b3_tokens /9));
 
-      const b4_tokens = 46414866;
+      const b4_tokens = 1301 * calcTokens(TOKENS_ALLOCATED[2], WEI_GOALS[2], BONUS[2]);
 
       // fourth beneficiary
       vestingScheduleId =
@@ -291,7 +312,7 @@ describe("Sparsko ICO", function () {
         );
 
       // last beneficiary
-      const b5_tokens = 49239932;
+      const b5_tokens = 1708 * calcTokens(TOKENS_ALLOCATED[3], WEI_GOALS[3], BONUS[3]);
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
           beneficiary5.address,
@@ -424,6 +445,107 @@ describe("Sparsko ICO", function () {
       expect(await sparksoICO.withdraw(withdrawalAmount)).to.emit(
         testToken,
         "Transfer"
+      );
+    });
+    it("Should check the updating and delaying functionalities", async function () {
+
+      const buildSignature = async (beneficiary, timestamp) => {
+        let hashBinary = ethers.utils.arrayify(
+          ethers.utils.solidityKeccak256(
+            ["address", "uint"],
+            [beneficiary.address, timestamp]
+          )
+        )
+        return await systemAddress.signMessage(hashBinary)
+      }
+
+
+      const wallet = owner.address;
+      // deploy ICO contract
+      const sparksoICO = await SparksoICO.deploy(systemAddress.address, wallet, testToken.address);
+      await sparksoICO.deployed();
+      expect((await sparksoICO.getToken()).toString()).to.equal(
+        testToken.address
+      );
+
+      // check that no vesting is scheduled
+      expect(await sparksoICO.getVestingSchedulesCount()).to.equal(0);
+
+      // config sparkso ICO to checks others functions
+      // send tokens to the ICO contract
+      await expect(testToken.transfer(sparksoICO.address, ICO_SUPPLY)).to.emit(
+        testToken,
+        "Transfer"
+      );
+      const sparksoICOBalance = await testToken.balanceOf(sparksoICO.address);
+      expect(sparksoICOBalance).to.equal(ICO_SUPPLY);
+      expect(await sparksoICO.getWithdrawableAmount()).to.equal(ICO_SUPPLY);
+
+      const openingTime = 1646485200;
+      const closingTime = openingTime + 4 * 30 * 24 * 3600; //By default 4 months
+      const beneficiary = addr1;
+
+      // set current time to the open ICO
+      await sparksoICO.setCurrentTime(openingTime);
+
+      // purchase tokens
+      await expect(
+        sparksoICO
+          .connect(beneficiary)
+          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime),{
+            value: ethers.utils.parseEther("100"),
+          })
+      ).to.emit(sparksoICO, "TokensPurchase");
+
+      let newWeiGoal = ethers.utils.parseEther("281");
+      await sparksoICO.updateICO(newWeiGoal, [ethers.utils.parseEther("0.25"), ethers.utils.parseEther("0.10")]);
+      
+      const beneficiary2 = addr2;
+      // purchase tokens
+      await expect(
+        sparksoICO
+          .connect(beneficiary2)
+          .buyTokens(beneficiary2.address, openingTime, buildSignature(beneficiary2, openingTime),{
+            value: ethers.utils.parseEther("181"),
+          })
+      ).to.emit(sparksoICO, "TokensPurchase");
+
+      expect(
+        await sparksoICO.currentStage()
+      ).to.be.equal(1);
+      
+      const b1_tokens = 8428940;//100 * calcTokens(TOKENS_ALLOCATED[0], WEI_GOALS[0], 30);
+      
+      const b2_tokens = 7333359;//181 * calcTokens(TOKENS_ALLOCATED[0] - b1_tokens*10**18, newWeiGoal - 100*10**18 , 30);
+
+      expect(await sparksoICO.getVestingSchedulesTotalAmount()).to.be.equal(b1_tokens + b2_tokens);
+      
+      expect(await sparksoICO.closingTime()).to.be.equal(closingTime)
+
+      let delay = 1 * 24 * 3600;
+
+      await sparksoICO.connect(owner).delayICO(delay);
+
+      // set time to closing time to release tokens
+      await sparksoICO.setCurrentTime(closingTime + 10);
+
+      // first beneficiary
+      // compute vesting schedule id
+      var vestingScheduleId =
+        await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary.address,
+          0
+        );
+
+      expect(
+        await sparksoICO.computeReleasableAmount(vestingScheduleId)
+      ).to.be.equal(0);
+
+      // should revert because of the delay apply to ICO
+      await expect(
+        sparksoICO.connect(beneficiary).release(vestingScheduleId, b1_tokens)
+      ).to.be.revertedWith(
+        "TokenVesting: cannot release tokens, not enough vested tokens"
       );
     });
   });
