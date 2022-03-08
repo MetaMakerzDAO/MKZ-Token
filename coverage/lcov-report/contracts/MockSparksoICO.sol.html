@@ -22,7 +22,7 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Statements</span>
-        <span class='fraction'>4/4</span>
+        <span class='fraction'>5/5</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
@@ -32,12 +32,12 @@
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Functions</span>
-        <span class='fraction'>5/5</span>
+        <span class='fraction'>6/6</span>
       </div>
       <div class='fl pad1y space-right2'>
         <span class="strong">100% </span>
         <span class="quiet">Lines</span>
-        <span class='fraction'>4/4</span>
+        <span class='fraction'>5/5</span>
       </div>
     </div>
   </div>
@@ -92,8 +92,7 @@
 47
 48
 49
-50
-51</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+50</td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -114,9 +113,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">7×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -124,15 +124,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">24×</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">30×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -140,7 +136,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">16×</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">22×</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// contracts/MockSparksoICO.sol
@@ -153,42 +151,41 @@ import "./SparksoICO.sol";
  * @title MockSparksoICO
  * WARNING: use only for testing and debugging purpose
  */
-contract MockSparksoICO is SparksoICO{
+contract MockSparksoICO is SparksoICO {
+    using SafeMath for uint256;
 &nbsp;
     uint256 mockTime = 0;
+    uint256 delay = 0;
     uint256 countAdresses = 0;
 &nbsp;
-    constructor(address token_, address payable wallet_) SparksoICO(wallet_, token_){
-    }
+    constructor(
+        address systemAddress_,
+        address payable wallet_,
+        address token_
+    ) SparksoICO(systemAddress_, wallet_, token_) {}
 &nbsp;
-    function setCurrentTime(uint256 _time)
-        external
-    {
+    function setCurrentTime(uint256 _time) external {
         mockTime = _time;
     }
-    
-    function setCountAddresses(uint256 _count)
-    external
-    {
+&nbsp;
+    function setCountAddresses(uint256 _count) external {
         countAdresses = _count;
     }
 &nbsp;
-    function getCurrentTime()
-        internal
-        virtual
-        override
-        view
-        returns(uint256)
-    {
-        return mockTime;
+    function _delayICO(uint256 _time) internal virtual override {
+        delay = delay.add(_time);
+    }
+&nbsp;
+    function getCurrentTime() internal view virtual override returns (uint256) {
+        return mockTime.sub(delay);
     }
 &nbsp;
     function _getCountAddresses()
         internal
+        view
         virtual
         override
-        view
-        returns(uint256)
+        returns (uint256)
     {
         return countAdresses;
     }
@@ -199,7 +196,7 @@ contract MockSparksoICO is SparksoICO{
 </div><!-- /wrapper -->
 <div class='footer quiet pad2 space-top1 center small'>
   Code coverage
-  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Tue Feb 22 2022 21:22:49 GMT+0100 (heure normale d’Europe centrale)
+  generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Tue Mar 08 2022 10:28:28 GMT+0100 (heure normale d’Europe centrale)
 </div>
 </div>
 <script src="../prettify.js"></script>
