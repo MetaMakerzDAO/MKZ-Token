@@ -4,7 +4,7 @@ pragma solidity ^0.8.11;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./TokenVesting.sol";
 
@@ -12,9 +12,6 @@ import "./TokenVesting.sol";
  * @title Sparkso ICO contract
  */
 contract SparksoICO is TokenVesting {
-    using SafeMath for uint256;
-    using SafeMath for uint88;
-    using SafeMath for uint8;
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
 
@@ -164,20 +161,20 @@ contract SparksoICO is TokenVesting {
         // Input values Rate and Bonus
         _bonus = [20, 15, 10, 0];
 
-        // Input values in ether multiply by 10^18 to convert into wei
+        // Input values in MATIC multiply by 10^18 to convert into wei
         _weiGoals = [
-            217 * 10**18, // Stage 1 wei goal (ETH or chain governance currency)
-            813 * 10**18, // Stage 2 wei goal (ETH or chain governance currency)
-            1301 * 10**18, // Stage 3 wei goal (ETH or chain governance currency)
-            1708 * 10**18 // Stage 4 wei goal (ETH or chain governance currency)
+            422221 * 10**18, // Stage 1 wei goal (ETH or chain governance currency)
+            1583330 * 10**18, // Stage 2 wei goal (ETH or chain governance currency)
+            2533328 * 10**18, // Stage 3 wei goal (ETH or chain governance currency)
+            3324993 * 10**18 // Stage 4 wei goal (ETH or chain governance currency)
         ];
 
         for (uint256 i = 0; i < STAGES; i++)
-            _rate[i] = TOKENS_ALLOCATED[i].div(_weiGoals[i]);
+            _rate[i] = TOKENS_ALLOCATED[i] / _weiGoals[i];
 
         _minWei = [
-            0.19 * 10**18, // Stage 1 first 500 people
-            0.08 * 10**18
+            375 * 10**18, // Stage 1 first 500 people
+            150 * 10**18
         ];
 
         // Calculate _totalWeiGoal
@@ -195,7 +192,7 @@ contract SparksoICO is TokenVesting {
 
         // Input value timestamp in second of the opening ICO time
         _openingTime = 1646485200; // The 5th march 2022
-        _closingTime = _openingTime.add(monthSecond.mul(4));
+        _closingTime = _openingTime + (monthSecond * 4);
 
         // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
         _cliff = false;
@@ -260,7 +257,7 @@ contract SparksoICO is TokenVesting {
      * @return _closingTime of the ICO 
      */
     function closingTime() external view returns (uint256) {
-        return _closingTime.add(_delay);
+        return _closingTime + _delay;
     }
 
     /**
@@ -281,7 +278,7 @@ contract SparksoICO is TokenVesting {
         uint256 tokens = _getTokenAmount(weiAmount);
 
         // update state
-        _weiRaised = _weiRaised.add(weiAmount);
+        _weiRaised = _weiRaised + weiAmount;
 
         _processPurchase(_beneficiary, tokens);
         emit TokensPurchase(
@@ -328,10 +325,6 @@ contract SparksoICO is TokenVesting {
                 "Sparkso ICO: _newMinWei array must have a length of 2."
             );
 
-        require(
-            _newWeiGoal >= 0,
-            "Sparkso ICO: _newWeiGoals array must have a length of the number ICO stages."
-        );
         
         _updateICO(_newWeiGoal, _newMinWei);
     }
@@ -344,7 +337,7 @@ contract SparksoICO is TokenVesting {
      * @dev Determines how ETH is stored/forwarded on purchases.
      */
     function _forwardFunds() internal {
-        _wallet.transfer(msg.value);
+        Address.sendValue(_wallet, msg.value);
     }
 
     /**
@@ -352,7 +345,7 @@ contract SparksoICO is TokenVesting {
      */
     function _delayICO(uint256 _time) internal virtual {
         // Convert the delay time into seconds and add to the current delay
-        _delay = _delay.add(_time);
+        _delay = _delay + _time;
     }
 
     /**
@@ -381,23 +374,20 @@ contract SparksoICO is TokenVesting {
             }
         }
 
-        require(
-            _newWeiGoal >= 0,
-            "SparksoICO: _newWeiGoals need to be superior or equal to 0."
-        );
         _weiGoals[_currentStage] = _newWeiGoal;
+        
+        uint256  currentStageVestingTokens = this.getVestingSchedulesTotalAmount();
 
-        uint256 currentStageTokensRemaining = TOKENS_ALLOCATED[_currentStage] -
-            (this.getVestingSchedulesTotalAmount() * 10**18);
-
-        // Update the number of already used tokens
-        for(uint i = 0; i < _currentStage; i++) currentStageTokensRemaining -= TOKENS_ALLOCATED[i];
+        // Substract sum of allocated tokens in previous stages
+        for(uint i = 0; i < _currentStage; i++) currentStageVestingTokens -= TOKENS_ALLOCATED[i];
+        
+        uint256 currentStageTokensRemaining = TOKENS_ALLOCATED[_currentStage] - currentStageVestingTokens;
         
         uint256 weiRaised_ = _weiRaised;
         // Update the wei raised for the current stage
         for(uint i = 0; i < _currentStage; i++) weiRaised_ -= _weiGoals[i];
 
-        _rate[_currentStage] = currentStageTokensRemaining.div(_newWeiGoal.sub(weiRaised_));
+        _rate[_currentStage] = currentStageTokensRemaining / (_newWeiGoal - weiRaised_);
         
         // Calculate _totalWeiGoal
         for (uint8 i = 0; i < STAGES; i++) _totalWeiGoal += _weiGoals[i];
@@ -416,7 +406,7 @@ contract SparksoICO is TokenVesting {
 
         uint256 weiGoal = 0;
         for (uint8 i = 0; i <= _currentStage; i++)
-            weiGoal = weiGoal.add(_weiGoals[i]);
+            weiGoal = weiGoal + _weiGoals[i];
 
         if (_weiRaised >= weiGoal && _currentStage < STAGES) {
             _currentStage++;
@@ -438,7 +428,7 @@ contract SparksoICO is TokenVesting {
         uint256 vestingValue = _currentStage == 0 ? 1 : _vestingValue;
         uint256 slicePeriod = _currentStage == 0 ? 1 : _slicePeriod;
 
-        createVestingSchedule(
+        _createVestingSchedule(
             _beneficiary,
             _closingTime,
             _cliffValues[_currentStage],
@@ -470,13 +460,12 @@ contract SparksoICO is TokenVesting {
         view
         returns (uint256)
     {
-        uint256 weiAmount = _weiAmount.div(10**18);
         uint256 rate_ = _rate[_currentStage];
-        uint256 tokens = weiAmount.mul(rate_);
+        uint256 tokens = _weiAmount * rate_;
         uint256 bonus_ = _getCountAddresses() > 500
-            ? tokens.mul(_bonus[_currentStage])
-            : tokens.mul(30); // 500 first bonus equal to 30%
-        return tokens.add(bonus_.div(100));
+            ? tokens * _bonus[_currentStage]
+            : tokens * 30; // 500 first bonus equal to 30%
+        return tokens + (bonus_ / 100);
     }
 
     /**
@@ -489,8 +478,8 @@ contract SparksoICO is TokenVesting {
     /**
      * @return current time minus the actual delay to control the closing times
      */
-    function getCurrentTime() internal view virtual override returns (uint256) {
-        return block.timestamp.sub(_delay);
+    function _getCurrentTime() internal view virtual override returns (uint256) {
+        return block.timestamp - _delay;
     }
 
     /**
@@ -508,11 +497,11 @@ contract SparksoICO is TokenVesting {
             "Sparkso ICO: beneficiary address should be defined."
         );
         require(
-            getCurrentTime() >= _openingTime,
+            _getCurrentTime() >= _openingTime,
             "Sparkso ICO: ICO didn't start."
         );
         require(
-            getCurrentTime() <= _closingTime,
+            _getCurrentTime() <= _closingTime,
             "Sparkso ICO: ICO is now closed, times up."
         );
         require(

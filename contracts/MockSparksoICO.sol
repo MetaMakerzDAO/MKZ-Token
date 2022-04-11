@@ -9,7 +9,6 @@ import "./SparksoICO.sol";
  * WARNING: use only for testing and debugging purpose
  */
 contract MockSparksoICO is SparksoICO {
-    using SafeMath for uint256;
 
     uint256 mockTime = 0;
     uint256 delay = 0;
@@ -30,11 +29,11 @@ contract MockSparksoICO is SparksoICO {
     }
 
     function _delayICO(uint256 _time) internal virtual override {
-        delay = delay.add(_time);
+        delay = delay + _time;
     }
 
-    function getCurrentTime() internal view virtual override returns (uint256) {
-        return mockTime.sub(delay);
+    function _getCurrentTime() internal view virtual override returns (uint256) {
+        return mockTime - delay;
     }
 
     function _getCountAddresses()

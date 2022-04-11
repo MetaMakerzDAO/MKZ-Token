@@ -23,6 +23,11 @@ module.exports = {
     },
   },
   networks: {
+    hardhat: {
+      accounts: {
+        accountsBalance: "10000000000000000000000000"
+      }
+    },
     mainnet: mainnetNetworkConfig(),
     goerli: goerliNetworkConfig(),
     bscMainnet: bscMainnetNetworkConfig(),
