@@ -3,24 +3,26 @@ const { ethers } = require("hardhat");
 
 const ICO_SUPPLY = 160679400; 
 
-const TOKENS_ALLOCATED = [
-  14070000 * 10**18,
-  35175000 * 10**18,
-  42210000 * 10**18,
-  49245000 * 10**18
+const EUR_GOALS = [
+  562800, // Stage 1 EUR goal
+  2110500, // Stage 2 EUR goal
+  3376800, // Stage 3 EUR goal
+  4432050 // Stage 4 EUR goal
 ];
-
-const WEI_GOALS = [
-  422221 * 10**18, // Stage 1 wei goal (ETH or chain governance currency)
-  1583330 * 10**18, // Stage 2 wei goal (ETH or chain governance currency)
-  2533328 * 10**18, // Stage 3 wei goal (ETH or chain governance currency)
-  3324993 * 10**18 
-];
+// Unit : euro cent 
+const RATE = [4, 6, 8, 9];
 
 const BONUS = [20, 15, 10, 0];
 
-const calcTokens = (tokens_allocated, wei_goal, bonus) => {
-  let tokens = parseInt(tokens_allocated/wei_goal);
+const calcEur = (weiAmount) => {
+  let MATICUSD = 135800000; 
+  let EURUSD = 107380000;
+  return parseInt((weiAmount * MATICUSD) / (EURUSD * 10 ** 18))
+}
+
+const calcTokens = (weiAmount, rate, bonus) => {
+  let eurAmount = calcEur(weiAmount)
+  let tokens = (eurAmount / rate) * 100
   return tokens + parseInt(tokens * 0.01 * bonus);
 }
 
@@ -116,7 +118,7 @@ describe("Sparsko ICO", function () {
           .connect(beneficiary)
           .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime), { value: 0 })
       ).to.be.revertedWith(
-        "Sparkso ICO: Amount need to be superior to the minimum wei defined."
+        "Sparkso ICO: Amount need to be superior to the minimum EUR defined."
       );
 
       // check wei raised in the contract is equal to 0
@@ -132,8 +134,8 @@ describe("Sparsko ICO", function () {
       ).to.emit(sparksoICO, "TokensPurchase");
 
       // check wei raised in the contract is equal to 1
-      expect(await sparksoICO.weiRaised()).to.equal(
-        ethers.utils.parseEther("1000")
+      expect(await sparksoICO.eurRaised()).to.equal(
+        calcEur(ethers.utils.parseEther("1000"))
       );
 
       // check the purchase addresses counter
@@ -154,7 +156,7 @@ describe("Sparsko ICO", function () {
       await sparksoICO.setCountAddresses(501);
       const beneficiary2 = addr2;
 
-      var value = ethers.utils.parseEther("421221");
+      var value = ethers.utils.parseEther("444019");
       // purchase all the first stage tokens
       await expect(
         sparksoICO
@@ -163,7 +165,7 @@ describe("Sparsko ICO", function () {
       ).to.emit(sparksoICO, "TokensPurchase");
 
       const beneficiary3 = addr3;
-      value = ethers.utils.parseEther("1583330");
+      value = ethers.utils.parseEther("1668818.1");
       // purchase all the second stage tokens
       await expect(
         sparksoICO
@@ -172,7 +174,7 @@ describe("Sparsko ICO", function () {
       ).to.emit(sparksoICO, "TokensPurchase");
 
       const beneficiary4 = addr4;
-      value = ethers.utils.parseEther("2533328");
+      value = ethers.utils.parseEther("2670109");
 
       // purchase all the third stage tokens
       await expect(
@@ -182,7 +184,7 @@ describe("Sparsko ICO", function () {
       ).to.emit(sparksoICO, "TokensPurchase");
 
       const beneficiary5 = addr5;
-      value = ethers.utils.parseEther("3324993");
+      value = ethers.utils.parseEther("3504518");
 
       // purchase all the last stage tokens
       await expect(
@@ -203,7 +205,7 @@ describe("Sparsko ICO", function () {
         );
 
       // the number of tokens beneficiary should be able to release
-      var tokens = "42900000000000000000000"//1000 * calcTokens(TOKENS_ALLOCATED[0], WEI_GOALS[0], 30); // 30% bonus for first beneficiary
+      var tokens = calcTokens(ethers.utils.parseEther("1000"), RATE[0], 30)
 
       // check that vested amount is equal to all the tokens bought at the first ICO stage
       expect(
@@ -229,7 +231,7 @@ describe("Sparsko ICO", function () {
         );
 
       // the number of tokens beneficiary should be able to release
-      tokens = "16680351600000000000000000"//421221 * calcTokens(TOKENS_ALLOCATED[0], WEI_GOALS[0], BONUS[0]);
+      tokens = calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0])
 
       // check that second beneficiary can release all his tokens bought at the first ICO stage
       await expect(
@@ -248,7 +250,7 @@ describe("Sparsko ICO", function () {
           0
         );
 
-      const b3_tokens = "40058249000000000000000000"//1583330 * calcTokens(TOKENS_ALLOCATED[1], WEI_GOALS[1], BONUS[1]);
+      const b3_tokens = calcTokens(ethers.utils.parseEther("1668818.1"), RATE[1], BONUS[1])
       // beneficiary 3 should not be able to release his token until the cliff + slice period
       await expect(
         sparksoICO.connect(beneficiary3).release(vestingScheduleId, b3_tokens)
@@ -263,9 +265,9 @@ describe("Sparsko ICO", function () {
       var releasableTokens = await sparksoICO.computeReleasableAmount(
         vestingScheduleId
       );
-      expect(releasableTokens).to.equal("4450916555555555555555555"); //Math.round(b3_tokens /9));
+      expect(releasableTokens).to.equal(parseInt(b3_tokens /9));
 
-      const b4_tokens = "44586572800000000000000000"//2533328 * calcTokens(TOKENS_ALLOCATED[2], WEI_GOALS[2], BONUS[2]);
+      const b4_tokens = calcTokens(ethers.utils.parseEther("2670109"), RATE[2], BONUS[2])
 
       // fourth beneficiary
       vestingScheduleId =
@@ -302,17 +304,17 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary3)
-          .release(vestingScheduleId, "35607332444444450000000000")
+          .release(vestingScheduleId, parseInt(8 * b3_tokens /9))
       )
         .to.emit(testToken, "Transfer")
         .withArgs(
           sparksoICO.address,
           beneficiary3.address,
-          "35607332444444450000000000"
+          parseInt(8 * b3_tokens /9)
         );
 
       // last beneficiary
-      const b5_tokens = "46549902000000000000000000"//3324993 * calcTokens(TOKENS_ALLOCATED[3], WEI_GOALS[3], BONUS[3]);
+      const b5_tokens = calcTokens(ethers.utils.parseEther("3504518"), RATE[3], BONUS[3])
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
           beneficiary5.address,
@@ -447,7 +449,7 @@ describe("Sparsko ICO", function () {
         "Transfer"
       );
     });
-    it("Should check the updating and delaying functionalities", async function () {
+    it("Should check delay functionality", async function () {
 
       const buildSignature = async (beneficiary, timestamp) => {
         let hashBinary = ethers.utils.arrayify(
@@ -497,8 +499,6 @@ describe("Sparsko ICO", function () {
           })
       ).to.emit(sparksoICO, "TokensPurchase");
 
-      let newWeiGoal = ethers.utils.parseEther("522221");
-      await sparksoICO.updateICO(newWeiGoal, [ethers.utils.parseEther("475"), ethers.utils.parseEther("150")]);
       
       const beneficiary2 = addr2;
       // purchase tokens
@@ -506,19 +506,13 @@ describe("Sparsko ICO", function () {
         sparksoICO
           .connect(beneficiary2)
           .buyTokens(beneficiary2.address, openingTime, buildSignature(beneficiary2, openingTime),{
-            value: ethers.utils.parseEther("521221"),
+            value: ethers.utils.parseEther("444019"),
           })
       ).to.emit(sparksoICO, "TokensPurchase");
 
       expect(
         await sparksoICO.currentStage()
       ).to.be.equal(1);
-      
-      const b1_tokens = 100 * calcTokens(TOKENS_ALLOCATED[0], WEI_GOALS[0], 30);
-      
-      const b2_tokens = 181 * calcTokens(TOKENS_ALLOCATED[0] - b1_tokens*10**18, newWeiGoal - 100*10**18 , 30);
-
-      expect(await sparksoICO.getVestingSchedulesTotalAmount()).to.be.equal("17660169800000000000000000");//b1_tokens + b2_tokens);
       
       expect(await sparksoICO.closingTime()).to.be.equal(closingTime)
 
@@ -528,6 +522,9 @@ describe("Sparsko ICO", function () {
 
       // set time to closing time to release tokens
       await sparksoICO.setCurrentTime(closingTime + 10);
+
+      // the number of tokens beneficiary should be able to release
+      b1_tokens = calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0])
 
       // first beneficiary
       // compute vesting schedule id

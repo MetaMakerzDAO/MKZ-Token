@@ -51,7 +51,7 @@ contract SparksoICO is TokenVesting {
 
     // Rate is different for each stages.
     // The rate is the conversion between EUR and the smallest and indivisible token unit.
-    uint256[4] private _rate;
+    uint8[4] private _rate;
 
     // EUR goal is different for each stages
     uint256[4] private _eurGoals;
@@ -91,7 +91,7 @@ contract SparksoICO is TokenVesting {
      * @param purchaser who paid for the tokens
      * @param beneficiary who got the tokens
      * @param value weis paid for purchase
-     * @param EURvalue converted EUR from wei value  
+     * @param EURvalue converted EUR from wei value
      * @param amount amount of tokens purchased
      * @param cliff cliff tokens or not
      * @param vesting vesting tokens or not
@@ -164,19 +164,15 @@ contract SparksoICO is TokenVesting {
         _systemAddress = systemAddress_;
         _wallet = wallet_;
         _token = IERC20(token_);
-        _MATICUSD = AggregatorV3Interface(
-            MATICUSD_
-        );
-        _EURUSD = AggregatorV3Interface(
-            EURUSD_
-        );
+        _MATICUSD = AggregatorV3Interface(MATICUSD_);
+        _EURUSD = AggregatorV3Interface(EURUSD_);
 
         // Input values Rate and Bonus
         _bonus = [20, 15, 10, 0];
 
         // Input values EUR goals
         _eurGoals = [
-            562800, // Stage 1 EUR goal 
+            562800, // Stage 1 EUR goal
             2110500, // Stage 2 EUR goal
             3376800, // Stage 3 EUR goal
             4432050 // Stage 4 EUR goal
@@ -184,12 +180,7 @@ contract SparksoICO is TokenVesting {
 
         // Input rates (x100 coeff)
         // Unit : cent euros
-        _rate = [ 
-            4, 
-            6,
-            8,
-            9
-        ];
+        _rate = [4, 6, 8, 9];
 
         // Minimum eur to invest in first stage
         // Unit : Euro
@@ -249,7 +240,7 @@ contract SparksoICO is TokenVesting {
     /**
      * @return _rate number of token units a buyer gets per wei for each stages.
      */
-    function rate() external view returns (uint256[4] memory) {
+    function rate() external view returns (uint8[4] memory) {
         return _rate;
     }
 
@@ -275,7 +266,7 @@ contract SparksoICO is TokenVesting {
     }
 
     /**
-     * @return _closingTime of the ICO 
+     * @return _closingTime of the ICO
      */
     function closingTime() external view returns (uint256) {
         return _closingTime + _delay;
@@ -293,13 +284,10 @@ contract SparksoICO is TokenVesting {
         bytes memory _signature
     ) public payable onlyValidSignature(_timestamp, _signature) {
         uint256 weiAmount = msg.value;
-        // Precision problem ? Ceil, round ?
-        (,int256 MATICUSD, , ,) = _MATICUSD.latestRoundData();
-        (,int256 EURUSD, , ,) = _EURUSD.latestRoundData();
-        uint256 eurAmount = (weiAmount * uint256(MATICUSD)) / uint256(EURUSD); 
+        uint256 eurAmount = _changeMATICEUR(msg.value);
 
         _preValidatePurchase(_beneficiary, eurAmount);
-        
+
         // calculate token amount to be created
         uint256 tokens = _getTokenAmount(eurAmount);
 
@@ -340,6 +328,21 @@ contract SparksoICO is TokenVesting {
     // -----------------------------------------
 
     /**
+     * @dev Convert weiAmount MATIC into EUR thanks to chainlink oracles
+     * @param weiAmount Matic weiAmount to change into EUR
+     */
+    function _changeMATICEUR(uint256 weiAmount) 
+        internal 
+        virtual 
+        returns (uint256) 
+    {
+        (, int256 MATICUSD, , , ) = _MATICUSD.latestRoundData();
+        (, int256 EURUSD, , , ) = _EURUSD.latestRoundData();
+        return (((weiAmount * uint256(MATICUSD)) / uint256(EURUSD)) *
+            ((10**_MATICUSD.decimals()) / (10**_EURUSD.decimals())));
+    }
+
+    /**
      * @dev Determines how ETH is stored/forwarded on purchases.
      */
     function _forwardFunds() internal {
@@ -366,8 +369,7 @@ contract SparksoICO is TokenVesting {
         }
 
         uint256 eurGoal = 0;
-        for (uint8 i = 0; i <= _currentStage; i++)
-            eurGoal += _eurGoals[i];
+        for (uint8 i = 0; i <= _currentStage; i++) eurGoal += _eurGoals[i];
 
         if (_eurRaised >= eurGoal && _currentStage < STAGES) {
             _currentStage++;
@@ -422,8 +424,7 @@ contract SparksoICO is TokenVesting {
         returns (uint256)
     {
         uint256 rate_ = _rate[_currentStage];
-        // Units are not the same, tokens have 18 decimals and eurAmount is in cent of euros so multiply by 10**16
-        uint256 tokens = _eurAmount * rate_ * 10 ** 16;
+        uint256 tokens = (_eurAmount / rate_) * 100 ;
         uint256 bonus_ = _getCountAddresses() > 500
             ? tokens * _bonus[_currentStage]
             : tokens * 30; // 500 first bonus equal to 30%
@@ -440,7 +441,13 @@ contract SparksoICO is TokenVesting {
     /**
      * @return current time minus the actual delay to control the closing times
      */
-    function _getCurrentTime() internal view virtual override returns (uint256) {
+    function _getCurrentTime()
+        internal
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return block.timestamp - _delay;
     }
 

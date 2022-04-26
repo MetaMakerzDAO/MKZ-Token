@@ -9,7 +9,6 @@ import "./SparksoICO.sol";
  * WARNING: use only for testing and debugging purpose
  */
 contract MockSparksoICO is SparksoICO {
-
     uint256 mockTime = 0;
     uint256 delay = 0;
     uint256 countAdresses = 0;
@@ -18,7 +17,15 @@ contract MockSparksoICO is SparksoICO {
         address systemAddress_,
         address payable wallet_,
         address token_
-    ) SparksoICO(systemAddress_, wallet_, token_) {}
+    )
+        SparksoICO(
+            systemAddress_,
+            wallet_,
+            token_,
+            0xAB594600376Ec9fD91F8e885dADF0CE036862dE0,
+            0xAB594600376Ec9fD91F8e885dADF0CE036862dE0
+        )
+    {}
 
     function setCurrentTime(uint256 _time) external {
         mockTime = _time;
@@ -32,7 +39,27 @@ contract MockSparksoICO is SparksoICO {
         delay = delay + _time;
     }
 
-    function _getCurrentTime() internal view virtual override returns (uint256) {
+    function _changeMATICEUR(uint256 weiAmount) 
+        internal 
+        virtual 
+        override
+        returns (uint256) 
+    {
+        // Oracles Simulation
+        // Data date from the 25th april on Polygon Mainnet
+        int256 MATICUSD = 135800000; // MATIC/USD chainlink simulation 
+        int256 EURUSD = 107380000; // EUR/USD chainlink simulation
+
+        return (weiAmount * uint256(MATICUSD)) / (uint256(EURUSD) * 10 ** 18);
+    }
+
+    function _getCurrentTime()
+        internal
+        view
+        virtual
+        override
+        returns (uint256)
+    {
         return mockTime - delay;
     }
 
