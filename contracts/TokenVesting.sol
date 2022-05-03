@@ -140,7 +140,7 @@ contract TokenVesting is Ownable, ReentrancyGuard{
         require(vestingSchedule.revocable == true, "TokenVesting: vesting is not revocable");
         uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
         if(vestedAmount > 0){
-            release(vestingScheduleId, vestedAmount);
+            _release(vestingScheduleId, vestedAmount);
         }
         uint256 unreleased = vestingSchedule.amountTotal - vestingSchedule.released;
         vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - unreleased;
@@ -157,33 +157,6 @@ contract TokenVesting is Ownable, ReentrancyGuard{
         onlyOwner{
         require(getWithdrawableAmount() >= amount, "TokenVesting: not enough withdrawable funds");
         _token.safeTransfer(owner(), amount);
-    }
-
-    /**
-    * @notice Release vested amount of tokens.
-    * @param vestingScheduleId the vesting schedule identifier
-    * @param amount the amount to release
-    */
-    function release(
-        bytes32 vestingScheduleId,
-        uint256 amount
-    )
-        public
-        nonReentrant
-        onlyIfVestingScheduleNotRevoked(vestingScheduleId){
-        VestingSchedule storage vestingSchedule = vestingSchedules[vestingScheduleId];
-        bool isBeneficiary = msg.sender == vestingSchedule.beneficiary;
-        bool isOwner = msg.sender == owner();
-        require(
-            isBeneficiary || isOwner,
-            "TokenVesting: only beneficiary and owner can release vested tokens"
-        );
-        uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
-        require(vestedAmount >= amount, "TokenVesting: cannot release tokens, not enough vested tokens");
-        vestingSchedule.released = vestingSchedule.released + amount;
-        address payable beneficiaryPayable = payable(vestingSchedule.beneficiary);
-        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - amount;
-        _token.safeTransfer(beneficiaryPayable, amount);
     }
 
     /**
@@ -309,6 +282,33 @@ contract TokenVesting is Ownable, ReentrancyGuard{
         vestingSchedulesIds.push(vestingScheduleId);
         uint256 currentVestingCount = holdersVestingCount[_beneficiary];
         holdersVestingCount[_beneficiary] = currentVestingCount + 1;
+    }
+
+    /**
+    * @notice Release vested amount of tokens.
+    * @param vestingScheduleId the vesting schedule identifier
+    * @param amount the amount to release
+    */
+    function _release(
+        bytes32 vestingScheduleId,
+        uint256 amount
+    )
+        internal
+        nonReentrant
+        onlyIfVestingScheduleNotRevoked(vestingScheduleId){
+        VestingSchedule storage vestingSchedule = vestingSchedules[vestingScheduleId];
+        bool isBeneficiary = msg.sender == vestingSchedule.beneficiary;
+        bool isOwner = msg.sender == owner();
+        require(
+            isBeneficiary || isOwner,
+            "TokenVesting: only beneficiary and owner can release vested tokens"
+        );
+        uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
+        require(vestedAmount >= amount, "TokenVesting: cannot release tokens, not enough vested tokens");
+        vestingSchedule.released = vestingSchedule.released + amount;
+        address payable beneficiaryPayable = payable(vestingSchedule.beneficiary);
+        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - amount;
+        _token.safeTransfer(beneficiaryPayable, amount);
     }
 
     /**
