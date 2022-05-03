@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  */
 contract Sparkso is ERC20 {
     //ERC20 symbol
-    string public constant SYMBOL = "SPARKSO";
+    string public constant SYMBOL = "POXO";
     
     //ERC20 name
-    string public constant NAME = "Sparkso ICO token";
+    string public constant NAME = "Sparkso";
     
     //ERC20 decimals
     uint8 public constant DECIMALS = 18;

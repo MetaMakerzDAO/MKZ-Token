@@ -272,6 +272,25 @@ contract SparksoICO is TokenVesting {
         return _closingTime + _delay;
     }
 
+    // -----------------------------------------
+    // Public interface
+    // -----------------------------------------
+
+     /**
+     * @dev Convert weiAmount MATIC into EUR thanks to chainlink oracles
+     * @param weiAmount Matic weiAmount to change into EUR
+     */
+    function changeMATICEUR(uint256 weiAmount) 
+        public 
+        virtual 
+        returns (uint256) 
+    {
+        (, int256 MATICUSD, , , ) = _MATICUSD.latestRoundData();
+        (, int256 EURUSD, , , ) = _EURUSD.latestRoundData();
+        return (((weiAmount * uint256(MATICUSD)) / uint256(EURUSD)) *
+            ((10**_MATICUSD.decimals()) / (10**_EURUSD.decimals())));
+    }
+
     /**
      * @dev low level token purchase
      * @param _beneficiary Address performing the token purchase
@@ -284,7 +303,7 @@ contract SparksoICO is TokenVesting {
         bytes memory _signature
     ) public payable onlyValidSignature(_timestamp, _signature) {
         uint256 weiAmount = msg.value;
-        uint256 eurAmount = _changeMATICEUR(msg.value);
+        uint256 eurAmount = changeMATICEUR(msg.value);
 
         _preValidatePurchase(_beneficiary, eurAmount);
 
@@ -326,21 +345,6 @@ contract SparksoICO is TokenVesting {
     // -----------------------------------------
     // Internal interface
     // -----------------------------------------
-
-    /**
-     * @dev Convert weiAmount MATIC into EUR thanks to chainlink oracles
-     * @param weiAmount Matic weiAmount to change into EUR
-     */
-    function _changeMATICEUR(uint256 weiAmount) 
-        internal 
-        virtual 
-        returns (uint256) 
-    {
-        (, int256 MATICUSD, , , ) = _MATICUSD.latestRoundData();
-        (, int256 EURUSD, , , ) = _EURUSD.latestRoundData();
-        return (((weiAmount * uint256(MATICUSD)) / uint256(EURUSD)) *
-            ((10**_MATICUSD.decimals()) / (10**_EURUSD.decimals())));
-    }
 
     /**
      * @dev Determines how ETH is stored/forwarded on purchases.
