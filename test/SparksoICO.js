@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers, network } = require("hardhat");
 
-const ICO_SUPPLY = 160679400; 
+const ICO_SUPPLY = 160679400;
 
 const EUR_GOALS = [
   562800, // Stage 1 EUR goal
@@ -15,7 +15,7 @@ const RATE = [4, 6, 8, 9];
 const BONUS = [20, 15, 10, 0];
 
 const calcEur = (weiAmount) => {
-  let MATICUSD = 135800000; 
+  let MATICUSD = 135800000;
   let EURUSD = 107380000;
   return parseInt((weiAmount * MATICUSD) / (EURUSD * 10 ** 18))
 }
@@ -65,46 +65,46 @@ describe("Sparsko ICO", function () {
       expect((await sparksoICO.getToken()).toString()).to.equal(
         testToken.address
       );
-      
+
       const network = await ethers.getDefaultProvider().getNetwork();
-      
-      const buildSignature = async (_beneficiary, _nonce, _deadline) => {  
-        
+
+      const buildSignature = async (_beneficiary, _nonce, _deadline) => {
+
         const domain = {
           name: "Sparkso",
           version: "1",
           chainId: network.chainId,
           verifyingContract: sparksoICO.address
         }
-        
+
         const types = {
-          PermitRelease : [
+          PermitRelease: [
             {
-              name : "systemAddress",
-              type : "address",
+              name: "systemAddress",
+              type: "address",
             },
             {
-              name : "beneficiary",
-              type : "address",
+              name: "beneficiary",
+              type: "address",
             },
             {
-              name : "nonce",
-              type : "uint256",
+              name: "nonce",
+              type: "uint256",
             },
             {
-              name : "deadline",
-              type : "uint256",
+              name: "deadline",
+              type: "uint256",
             }
           ]
         }
-        
+
         const value = {
           systemAddress: systemAddress.address,
           beneficiary: _beneficiary,
           nonce: _nonce,
           deadline: _deadline
         }
-      
+
         return await systemAddress._signTypedData(domain, types, value);
       }
 
@@ -251,7 +251,7 @@ describe("Sparsko ICO", function () {
 
       // check that user can release all his tokens
       await expect(
-        sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId, tokens, beneficiary.address, deadline, buildSignature(beneficiary.address, 0, deadline) )
+        sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId, tokens, beneficiary.address, deadline, buildSignature(beneficiary.address, 0, deadline))
       )
         .to.emit(testToken, "Transfer")
         .withArgs(sparksoICO.address, beneficiary.address, tokens);
@@ -263,6 +263,7 @@ describe("Sparsko ICO", function () {
       // compute vesting schedule id
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+
           beneficiary2.address,
           0
         );
@@ -302,7 +303,20 @@ describe("Sparsko ICO", function () {
       var releasableTokens = await sparksoICO.computeReleasableAmount(
         vestingScheduleId
       );
-      expect(releasableTokens).to.equal(parseInt(b3_tokens /9));
+      expect(releasableTokens).to.equal(parseInt(b3_tokens / 9));
+
+      // release the first slice of this vesting schedule
+      await expect(
+        sparksoICO
+          .connect(beneficiary3)
+          .releaseTokens(vestingScheduleId, parseInt(b3_tokens / 9), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 0, deadline))
+      )
+        .to.emit(testToken, "Transfer")
+        .withArgs(
+          sparksoICO.address,
+          beneficiary3.address,
+          parseInt(b3_tokens / 9)
+        );
 
       const b4_tokens = calcTokens(ethers.utils.parseEther("2670109"), RATE[2], BONUS[2])
 
@@ -325,7 +339,7 @@ describe("Sparsko ICO", function () {
 
       // check that the fourth beneficiary could release all his tokens
       await expect(
-        sparksoICO.connect(beneficiary4).releaseTokens(vestingScheduleId, b4_tokens)
+        sparksoICO.connect(beneficiary4).releaseTokens(vestingScheduleId, b4_tokens, beneficiary4.address, deadline, buildSignature(beneficiary4.address, 0, deadline))
       )
         .to.emit(testToken, "Transfer")
         .withArgs(sparksoICO.address, beneficiary4.address, b4_tokens);
@@ -337,17 +351,20 @@ describe("Sparsko ICO", function () {
           0
         );
 
+      // check nonces is equal to 1 because its the second time signature for this user
+      expect(await sparksoICO.nonces(beneficiary3.address)).to.equal(1);
+
       // check that the third beneficiary could release the rest of his tokens
       await expect(
         sparksoICO
           .connect(beneficiary3)
-          .releaseTokens(vestingScheduleId, parseInt(8 * b3_tokens /9), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 1, deadline))
+          .releaseTokens(vestingScheduleId, parseInt(8 * b3_tokens / 9), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 1, deadline))
       )
         .to.emit(testToken, "Transfer")
         .withArgs(
           sparksoICO.address,
           beneficiary3.address,
-          parseInt(8 * b3_tokens /9)
+          parseInt(8 * b3_tokens / 9)
         );
 
       // last beneficiary
@@ -390,32 +407,65 @@ describe("Sparsko ICO", function () {
        * check the balance of the second beneficiary
        * beneficiary 3 should not be able to release his token until the cliff + slice period
        * check beneficiary 3 could release first slice of this vesting 
+       * 
        * should revert the fourth beneficiary attempt to relase tokens because of the cliff period
        * check that the fourth beneficiary could release all his tokens
+       * check nonces is equal to 1 because its the second time signature for this user
        * check that the third beneficiary could release the rest of his tokens
        * check that the fifth beneficiary could release the rest of his tokens
        */
     });
     it("Should check TokenVesting contract functions", async function () {
-
-      const buildSignature = async (beneficiary, timestamp) => {
-        let hashBinary = ethers.utils.arrayify(
-          ethers.utils.solidityKeccak256(
-            ["address", "uint"],
-            [beneficiary.address, timestamp]
-          )
-        )
-        return await systemAddress.signMessage(hashBinary)
-      }
-
-
       const wallet = owner.address;
+
       // deploy ICO contract
       const sparksoICO = await SparksoICO.deploy(systemAddress.address, wallet, testToken.address);
       await sparksoICO.deployed();
       expect((await sparksoICO.getToken()).toString()).to.equal(
         testToken.address
       );
+
+      const network = await ethers.getDefaultProvider().getNetwork();
+
+      const buildSignature = async (_beneficiary, _nonce, _deadline) => {
+
+        const domain = {
+          name: "Sparkso",
+          version: "1",
+          chainId: network.chainId,
+          verifyingContract: sparksoICO.address
+        }
+
+        const types = {
+          Release: [
+            {
+              name: "systemAddress",
+              type: "address",
+            },
+            {
+              name: "beneficiary",
+              type: "address",
+            },
+            {
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              name: "deadline",
+              type: "uint256",
+            }
+          ]
+        }
+
+        const value = {
+          systemAddress: systemAddress.address,
+          beneficiary: _beneficiary,
+          nonce: _nonce,
+          deadline: _deadline
+        }
+
+        return await systemAddress._signTypedData(domain, types, value);
+      }
 
       // check that no vesting is scheduled
       expect(await sparksoICO.getVestingSchedulesCount()).to.equal(0);
@@ -441,9 +491,7 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime), {
-            value: ethers.utils.parseEther("1000"),
-          })
+          .buyTokens(beneficiary.address, { value: ethers.utils.parseEther("1000") })
       ).to.emit(sparksoICO, "TokensPurchase");
 
       // get vesting schedule id
@@ -489,24 +537,56 @@ describe("Sparsko ICO", function () {
     });
     it("Should check delay functionality", async function () {
 
-      const buildSignature = async (beneficiary, timestamp) => {
-        let hashBinary = ethers.utils.arrayify(
-          ethers.utils.solidityKeccak256(
-            ["address", "uint"],
-            [beneficiary.address, timestamp]
-          )
-        )
-        return await systemAddress.signMessage(hashBinary)
-      }
-
-
       const wallet = owner.address;
+
       // deploy ICO contract
       const sparksoICO = await SparksoICO.deploy(systemAddress.address, wallet, testToken.address);
       await sparksoICO.deployed();
       expect((await sparksoICO.getToken()).toString()).to.equal(
         testToken.address
       );
+
+      const network = await ethers.getDefaultProvider().getNetwork();
+
+      const buildSignature = async (_beneficiary, _nonce, _deadline) => {
+
+        const domain = {
+          name: "Sparkso",
+          version: "1",
+          chainId: network.chainId,
+          verifyingContract: sparksoICO.address
+        }
+
+        const types = {
+          PermitRelease: [
+            {
+              name: "systemAddress",
+              type: "address",
+            },
+            {
+              name: "beneficiary",
+              type: "address",
+            },
+            {
+              name: "nonce",
+              type: "uint256",
+            },
+            {
+              name: "deadline",
+              type: "uint256",
+            }
+          ]
+        }
+
+        const value = {
+          systemAddress: systemAddress.address,
+          beneficiary: _beneficiary,
+          nonce: _nonce,
+          deadline: _deadline
+        }
+
+        return await systemAddress._signTypedData(domain, types, value);
+      }
 
       // check that no vesting is scheduled
       expect(await sparksoICO.getVestingSchedulesCount()).to.equal(0);
@@ -524,6 +604,7 @@ describe("Sparsko ICO", function () {
       const openingTime = 1646485200;
       const closingTime = openingTime + 4 * 30 * 24 * 3600; //By default 4 months
       const beneficiary = addr1;
+      const deadline = closingTime + 6 * 30 * 24 * 3600; // Irrelevant deadline just for testing
 
       // set current time to the open ICO
       await sparksoICO.setCurrentTime(openingTime);
@@ -532,18 +613,18 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .buyTokens(beneficiary.address, openingTime, buildSignature(beneficiary, openingTime),{
+          .buyTokens(beneficiary.address, {
             value: ethers.utils.parseEther("1000"),
           })
       ).to.emit(sparksoICO, "TokensPurchase");
 
-      
+
       const beneficiary2 = addr2;
       // purchase tokens
       await expect(
         sparksoICO
           .connect(beneficiary2)
-          .buyTokens(beneficiary2.address, openingTime, buildSignature(beneficiary2, openingTime),{
+          .buyTokens(beneficiary2.address, {
             value: ethers.utils.parseEther("444019"),
           })
       ).to.emit(sparksoICO, "TokensPurchase");
@@ -551,7 +632,7 @@ describe("Sparsko ICO", function () {
       expect(
         await sparksoICO.currentStage()
       ).to.be.equal(1);
-      
+
       expect(await sparksoICO.closingTime()).to.be.equal(closingTime)
 
       let delay = 1 * 24 * 3600;
@@ -578,7 +659,7 @@ describe("Sparsko ICO", function () {
 
       // should revert because of the delay apply to ICO
       await expect(
-        sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId, b1_tokens)
+        sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId, b1_tokens, beneficiary.address, deadline, buildSignature(beneficiary.address, 0, deadline))
       ).to.be.revertedWith(
         "TokenVesting: cannot release tokens, not enough vested tokens"
       );

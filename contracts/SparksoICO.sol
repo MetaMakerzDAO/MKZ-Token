@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./TokenVesting.sol";
 
 /**
@@ -18,6 +19,8 @@ contract SparksoICO is TokenVesting, EIP712 {
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
     using Counters for Counters.Counter;
+
+    using Strings for address;
 
     // Price feed to convert MATIC to EUR
     AggregatorV3Interface internal _MATICUSD;
@@ -139,7 +142,7 @@ contract SparksoICO is TokenVesting, EIP712 {
     ) {
         // Must be inferior or equal to the deadline
         require(
-            block.timestamp <= deadline,
+            _getCurrentTime() <= deadline,
             "SparksoICO: expired deadline release permit signature."
         );
 
@@ -152,6 +155,7 @@ contract SparksoICO is TokenVesting, EIP712 {
                 deadline
             )
         );
+
         bytes32 hash = _hashTypedDataV4(structHash);
 
         require(
@@ -311,7 +315,7 @@ contract SparksoICO is TokenVesting, EIP712 {
     // -----------------------------------------
     // Public interface
     // -----------------------------------------
-    
+
     /**
      * @dev Release token block into the vesting smart contract
      * @param _vestingScheduleId ID corresponding to the vesting schedule of the buyer
@@ -326,10 +330,7 @@ contract SparksoICO is TokenVesting, EIP712 {
         address _beneficiary,
         uint256 _deadline,
         bytes memory _signature
-    )
-        public
-        onlyValidSignature(_beneficiary, _deadline, _signature)
-    {
+    ) public onlyValidSignature(_beneficiary, _deadline, _signature) {
         _release(_vestingScheduleId, _amount);
     }
 
@@ -352,9 +353,7 @@ contract SparksoICO is TokenVesting, EIP712 {
      * @dev low level token purchase
      * @param _beneficiary Address performing the token purchase
      */
-    function buyTokens(
-        address _beneficiary
-    ) public payable {
+    function buyTokens(address _beneficiary) public payable {
         uint256 weiAmount = msg.value;
         uint256 eurAmount = changeMATICEUR(msg.value);
 
@@ -396,15 +395,15 @@ contract SparksoICO is TokenVesting, EIP712 {
     }
 
     /**
-     * @dev Returns the current nonce for `buyer`. This value must be
+     * @dev Returns the current nonce for `beneficiary`. This value must be
      * included whenever a signature is generated for {permit-release}.
      *
-     * Every successful call to {permit-release} increases ``buyer``'s nonce by one. This
+     * Every successful call to {permit-release} increases ``beneficiary``'s nonce by one. This
      * prevents a signature from being used multiple times.
-     * @param buyer buyer address used to purchase ICO tokens
+     * @param _beneficiary beneficiary address used to purchase ICO tokens
      */
-    function nonces(address buyer) public view returns (uint256) {
-        return _nonces[buyer].current();
+    function nonces(address _beneficiary) public view returns (uint256) {
+        return _nonces[_beneficiary].current();
     }
 
     // -----------------------------------------
@@ -487,10 +486,15 @@ contract SparksoICO is TokenVesting, EIP712 {
      *
      * @param _beneficiary buyer address used to purchase ICO tokens
      */
-    function _useNonce(address _beneficiary) internal returns (uint256 current) {
+    function _useNonce(address _beneficiary)
+        internal
+        returns (uint256 current)
+    {
         Counters.Counter storage nonce = _nonces[_beneficiary];
         current = nonce.current();
         nonce.increment();
+
+        return current;
     }
 
     /**
