@@ -24,8 +24,9 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      chainId: 1,
       accounts: {
-        accountsBalance: "10000000000000000000000000"
+        accountsBalance: "10000000000000000000000000",
       }
     },
     mainnet: mainnetNetworkConfig(),

@@ -35,22 +35,22 @@ contract MockSparksoICO is SparksoICO {
         countAdresses = _count;
     }
 
-    function _delayICO(uint256 _time) internal virtual override {
-        delay = delay + _time;
-    }
-
-    function _changeMATICEUR(uint256 weiAmount) 
-        internal 
-        virtual 
+    function changeMATICEUR(uint256 weiAmount)
+        public
+        virtual
         override
-        returns (uint256) 
+        returns (uint256)
     {
         // Oracles Simulation
         // Data date from the 25th april on Polygon Mainnet
-        int256 MATICUSD = 135800000; // MATIC/USD chainlink simulation 
+        int256 MATICUSD = 135800000; // MATIC/USD chainlink simulation
         int256 EURUSD = 107380000; // EUR/USD chainlink simulation
 
-        return (weiAmount * uint256(MATICUSD)) / (uint256(EURUSD) * 10 ** 18);
+        return (weiAmount * uint256(MATICUSD)) / (uint256(EURUSD) * 10**18);
+    }
+
+    function _delayICO(uint256 _time) internal virtual override {
+        delay = delay + _time;
     }
 
     function _getCurrentTime()

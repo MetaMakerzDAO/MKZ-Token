@@ -6,15 +6,21 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "./TokenVesting.sol";
 
 /**
  * @title Sparkso ICO contract
  */
-contract SparksoICO is TokenVesting {
+contract SparksoICO is TokenVesting, EIP712 {
     using SafeERC20 for IERC20;
     using ECDSA for bytes32;
+    using Counters for Counters.Counter;
+
+    using Strings for address;
 
     // Price feed to convert MATIC to EUR
     AggregatorV3Interface internal _MATICUSD;
@@ -26,8 +32,14 @@ contract SparksoICO is TokenVesting {
     // Address where funds are collected
     address payable private _wallet;
 
-    // Backend address use to sign and authentificate user purchase
+    // Backend address use to sign and authentificate beneficiary release tokens
     address private _systemAddress;
+
+    // EIP712 constant
+    bytes32 private immutable _PERMIT_TYPEHASH =
+        keccak256(
+            "PermitRelease(address systemAddress,address beneficiary,uint256 nonce,uint256 deadline)"
+        );
 
     // Bonus is a percentage of your token purchased in addition to your given tokens.
     // If bonus is 30% you will have : number_tokens + number_tokens * (30 / 100)
@@ -80,6 +92,9 @@ contract SparksoICO is TokenVesting {
     // First 500 addresses purchasing tokens
     mapping(address => uint8) private _firstAddresses;
 
+    // Nonces use for signature
+    mapping(address => Counters.Counter) private _nonces;
+
     // Purchased cliff or not
     bool private _cliff;
 
@@ -120,15 +135,32 @@ contract SparksoICO is TokenVesting {
     /**
      * @dev Reverts if the purchase is not sign by the backend system wallet address
      */
-    modifier onlyValidSignature(uint256 timestamp, bytes memory signature) {
-        // Encode the msg.sender with the timestamp to
-        bytes32 msgHash = keccak256(abi.encodePacked(msg.sender, timestamp));
-        bytes32 signedHash = keccak256(
-            abi.encodePacked("\x19Ethereum Signed Message:\n32", msgHash)
-        );
+    modifier onlyValidSignature(
+        address beneficiary,
+        uint256 deadline,
+        bytes memory signature
+    ) {
+        // Must be inferior or equal to the deadline
         require(
-            signedHash.recover(signature) == _systemAddress,
-            "Sparkso ICO: Invalid purchase signature."
+            _getCurrentTime() <= deadline,
+            "SparksoICO: expired deadline release permit signature."
+        );
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                _PERMIT_TYPEHASH,
+                _systemAddress,
+                beneficiary,
+                _useNonce(beneficiary),
+                deadline
+            )
+        );
+
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        require(
+            ECDSA.recover(hash, signature) == _systemAddress,
+            "Sparkso ICO: Invalid release permit signature."
         );
         _;
     }
@@ -139,7 +171,7 @@ contract SparksoICO is TokenVesting {
         address token_,
         address MATICUSD_,
         address EURUSD_
-    ) TokenVesting(token_) {
+    ) TokenVesting(token_) EIP712("Sparkso", "1") {
         require(
             systemAddress_ != address(0x0),
             "Sparkso ICO: system address is the zero address"
@@ -272,36 +304,56 @@ contract SparksoICO is TokenVesting {
         return _closingTime + _delay;
     }
 
+    /**
+     * @dev Returns the domain separator used in the encoding of the signature for {permit-release},
+     * as defined by {EIP712}.
+     */
+    function DomainSeparator() external view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
     // -----------------------------------------
     // Public interface
     // -----------------------------------------
 
-     /**
-     * @dev Convert weiAmount MATIC into EUR thanks to chainlink oracles
-     * @param weiAmount Matic weiAmount to change into EUR
+    /**
+     * @dev Release token block into the vesting smart contract
+     * @param _vestingScheduleId ID corresponding to the vesting schedule of the buyer
+     * @param _amount Token amount _beneficiary want to release
+     * @param _beneficiary Address of the release token beneficiary
+     * @param _deadline Signature deadline
+     * @param _signature System wallet signature only if beneficiary has register a KYC
      */
-    function changeMATICEUR(uint256 weiAmount) 
-        public 
-        virtual 
-        returns (uint256) 
+    function releaseTokens(
+        bytes32 _vestingScheduleId,
+        uint256 _amount,
+        address _beneficiary,
+        uint256 _deadline,
+        bytes memory _signature
+    ) public onlyValidSignature(_beneficiary, _deadline, _signature) {
+        _release(_vestingScheduleId, _amount);
+    }
+
+    /**
+     * @dev Convert weiAmount MATIC into EUR thanks to chainlink oracles
+     * @param _weiAmount Matic weiAmount to change into EUR
+     */
+    function changeMATICEUR(uint256 _weiAmount)
+        public
+        virtual
+        returns (uint256)
     {
         (, int256 MATICUSD, , , ) = _MATICUSD.latestRoundData();
         (, int256 EURUSD, , , ) = _EURUSD.latestRoundData();
-        return (((weiAmount * uint256(MATICUSD)) / uint256(EURUSD)) *
+        return (((_weiAmount * uint256(MATICUSD)) / uint256(EURUSD)) *
             ((10**_MATICUSD.decimals()) / (10**_EURUSD.decimals())));
     }
 
     /**
      * @dev low level token purchase
      * @param _beneficiary Address performing the token purchase
-     * @param _timestamp Timestamp + msg.sender address use to build signature
-     * @param _signature Signature need to be sign by system wallet
      */
-    function buyTokens(
-        address _beneficiary,
-        uint256 _timestamp,
-        bytes memory _signature
-    ) public payable onlyValidSignature(_timestamp, _signature) {
+    function buyTokens(address _beneficiary) public payable {
         uint256 weiAmount = msg.value;
         uint256 eurAmount = changeMATICEUR(msg.value);
 
@@ -340,6 +392,18 @@ contract SparksoICO is TokenVesting {
             "Sparkso ICO: the delay need to be superior to 0."
         );
         _delayICO(_timeToDelay);
+    }
+
+    /**
+     * @dev Returns the current nonce for `beneficiary`. This value must be
+     * included whenever a signature is generated for {permit-release}.
+     *
+     * Every successful call to {permit-release} increases ``beneficiary``'s nonce by one. This
+     * prevents a signature from being used multiple times.
+     * @param _beneficiary beneficiary address used to purchase ICO tokens
+     */
+    function nonces(address _beneficiary) public view returns (uint256) {
+        return _nonces[_beneficiary].current();
     }
 
     // -----------------------------------------
@@ -418,6 +482,22 @@ contract SparksoICO is TokenVesting {
     }
 
     /**
+     * @dev "Consume a nonce": return the current value and increment.
+     *
+     * @param _beneficiary buyer address used to purchase ICO tokens
+     */
+    function _useNonce(address _beneficiary)
+        internal
+        returns (uint256 current)
+    {
+        Counters.Counter storage nonce = _nonces[_beneficiary];
+        current = nonce.current();
+        nonce.increment();
+
+        return current;
+    }
+
+    /**
      * @dev Calculate the number of tokens depending on current ICO stage with corresponding rate and bonus
      * @param _eurAmount Value in wei to be converted into tokens
      * @return Number of tokens that can be purchased with the specified _weiAmount
@@ -428,7 +508,7 @@ contract SparksoICO is TokenVesting {
         returns (uint256)
     {
         uint256 rate_ = _rate[_currentStage];
-        uint256 tokens = (_eurAmount / rate_) * 100 ;
+        uint256 tokens = (_eurAmount / rate_) * 100;
         uint256 bonus_ = _getCountAddresses() > 500
             ? tokens * _bonus[_currentStage]
             : tokens * 30; // 500 first bonus equal to 30%
