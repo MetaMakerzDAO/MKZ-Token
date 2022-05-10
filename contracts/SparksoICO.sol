@@ -203,7 +203,7 @@ contract SparksoICO is TokenVesting {
         _slicePeriod = 10 * 24 * 3600;
 
         // Input value timestamp in second of the opening ICO time
-        _openingTime = 1646485200; // The 5th march 2022
+        _openingTime = 1654102800; // The 1st of June
         _closingTime = _openingTime + (monthSecond * 4);
 
         // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
