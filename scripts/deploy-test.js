@@ -13,7 +13,7 @@ async function main() {
     console.log("Token address:", token.address);
   
     const SparksoICO = await ethers.getContractFactory("MockSparksoICO");
-    const sparksoICO = await SparksoICO.deploy(token.address, wallet);
+    const sparksoICO = await SparksoICO.deploy(wallet, wallet, token.address);
     console.log("SparksoICO address:", sparksoICO.address, "\nICO wallet:", wallet);
   }
   
