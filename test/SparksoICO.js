@@ -117,7 +117,7 @@ describe("Sparsko ICO", function () {
       expect(sparksoICOBalance).to.equal(ethers.utils.parseEther(ICO_SUPPLY.toString()));
       expect(await sparksoICO.getWithdrawableAmount()).to.equal(ethers.utils.parseEther(ICO_SUPPLY.toString()));
 
-      const openingTime = 1646485200; // Use to build signature, only for testing purpose
+      const openingTime = 1654102800; // Use to build signature, only for testing purpose
       const closingTime = openingTime + 4 * 30 * 24 * 3600; //By default 4 months
       const deadline = closingTime + 6 * 30 * 24 * 3600; // Irrelevant deadline just for testing
       const beneficiary = addr1;
@@ -480,7 +480,7 @@ describe("Sparsko ICO", function () {
       expect(sparksoICOBalance).to.equal(ethers.utils.parseEther(ICO_SUPPLY.toString()));
       expect(await sparksoICO.getWithdrawableAmount()).to.equal(ethers.utils.parseEther(ICO_SUPPLY.toString()));
 
-      const openingTime = 1646485200;
+      const openingTime = 1654102800;
       //const closingTime = openingTime + 4 * 30 * 24 * 3600; //By default 4 months
       const beneficiary = addr1;
 
@@ -601,7 +601,7 @@ describe("Sparsko ICO", function () {
       expect(sparksoICOBalance).to.equal(ethers.utils.parseEther(ICO_SUPPLY.toString()));
       expect(await sparksoICO.getWithdrawableAmount()).to.equal(ethers.utils.parseEther(ICO_SUPPLY.toString()));
 
-      const openingTime = 1646485200;
+      const openingTime = 1654102800;
       const closingTime = openingTime + 4 * 30 * 24 * 3600; //By default 4 months
       const beneficiary = addr1;
       const deadline = closingTime + 6 * 30 * 24 * 3600; // Irrelevant deadline just for testing
@@ -625,13 +625,10 @@ describe("Sparsko ICO", function () {
         sparksoICO
           .connect(beneficiary2)
           .buyTokens(beneficiary2.address, {
-            value: ethers.utils.parseEther("444019"),
+            value: ethers.utils.parseEther("4000"),
           })
       ).to.emit(sparksoICO, "TokensPurchase");
 
-      expect(
-        await sparksoICO.currentStage()
-      ).to.be.equal(1);
 
       expect(await sparksoICO.closingTime()).to.be.equal(closingTime)
 
@@ -643,7 +640,7 @@ describe("Sparsko ICO", function () {
       await sparksoICO.setCurrentTime(closingTime + 10);
 
       // the number of tokens beneficiary should be able to release
-      b1_tokens = calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0])
+      b1_tokens = calcTokens(ethers.utils.parseEther("4000"), RATE[0], BONUS[0])
 
       // first beneficiary
       // compute vesting schedule id

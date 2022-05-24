@@ -72,4 +72,21 @@ contract MockSparksoICO is SparksoICO {
     {
         return countAdresses;
     }
+
+    /**
+     * @dev Check if the transaction EUR is lower or equal to the maximum defined.
+     * @param _eurAmount Value in EUR involved in the purchase
+     */
+    function _checkMaxEUR(uint256 _eurAmount) 
+        internal 
+        override
+        pure 
+        virtual
+    {
+        // ONLY FOR TEST PURPOSES
+        require(
+            _eurAmount <= 150000000000,
+            "Sparkso ICO: Amount need to be inferior or equal to 15 000 EUR."
+        );
+    }
 }

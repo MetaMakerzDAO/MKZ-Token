@@ -577,6 +577,24 @@ contract SparksoICO is TokenVesting, EIP712 {
                 "Sparkso ICO: Amount need to be superior to the minimum EUR defined."
             );
         }
+
+        _checkMaxEUR(_eurAmount);
+    }
+
+
+    /**
+     * @dev Check if the transaction EUR is lower or equal to the maximum defined.
+     * @param _eurAmount Value in EUR involved in the purchase
+     */
+    function _checkMaxEUR(uint256 _eurAmount) 
+        internal 
+        pure 
+        virtual
+    {
+        require(
+            _eurAmount <= 15000,
+            "Sparkso ICO: Amount need to be inferior or equal to 15 000 EUR."
+        );
     }
 
     /**
