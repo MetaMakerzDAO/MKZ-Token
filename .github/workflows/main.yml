@@ -26,7 +26,7 @@ jobs:
           node-version: ${{ matrix.node_version }}
           architecture: ${{ matrix.architecture }}
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Compile smart contracts
         env:
           FUJI_PRIVATE_KEY: ${{ secrets.FUJI_PRIVATE_KEY }}
