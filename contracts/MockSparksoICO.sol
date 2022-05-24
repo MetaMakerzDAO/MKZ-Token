@@ -12,6 +12,7 @@ contract MockSparksoICO is SparksoICO {
     uint256 mockTime = 0;
     uint256 delay = 0;
     uint256 countAdresses = 0;
+    bool debug = true;
 
     constructor(
         address systemAddress_,
@@ -22,7 +23,7 @@ contract MockSparksoICO is SparksoICO {
             systemAddress_,
             wallet_,
             token_,
-            0xAB594600376Ec9fD91F8e885dADF0CE036862dE0,
+            0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada,
             0xAB594600376Ec9fD91F8e885dADF0CE036862dE0
         )
     {}
@@ -34,6 +35,10 @@ contract MockSparksoICO is SparksoICO {
     function setCountAddresses(uint256 _count) external {
         countAdresses = _count;
     }
+    
+    function setDebug(bool _debug) external {
+        debug = _debug;
+    }
 
     function changeMATICEUR(uint256 weiAmount)
         public
@@ -43,10 +48,14 @@ contract MockSparksoICO is SparksoICO {
     {
         // Oracles Simulation
         // Data date from the 25th april on Polygon Mainnet
-        int256 MATICUSD = 135800000; // MATIC/USD chainlink simulation
-        int256 EURUSD = 107380000; // EUR/USD chainlink simulation
+        if(debug){
+            int256 MATICUSD = 135800000; // MATIC/USD chainlink simulation
+            int256 EURUSD = 107380000; // EUR/USD chainlink simulation
 
-        return (weiAmount * uint256(MATICUSD)) / (uint256(EURUSD) * 10**18);
+            return (weiAmount * uint256(MATICUSD)) / (uint256(EURUSD) * 10**18);
+        }
+        else
+            return super.changeMATICEUR(weiAmount);
     }
 
     function _delayICO(uint256 _time) internal virtual override {
@@ -80,13 +89,17 @@ contract MockSparksoICO is SparksoICO {
     function _checkMaxEUR(uint256 _eurAmount) 
         internal 
         override
-        pure 
+        view
         virtual
     {
-        // ONLY FOR TEST PURPOSES
-        require(
-            _eurAmount <= 150000000000,
-            "Sparkso ICO: Amount need to be inferior or equal to 15 000 EUR."
-        );
+        if(debug){
+            // ONLY FOR TEST PURPOSES
+            require(
+                _eurAmount <= 150000000000,
+                "Sparkso ICO: Amount need to be inferior or equal to 15 000 EUR."
+            );
+        }
+        else
+            super._checkMaxEUR(_eurAmount);
     }
 }

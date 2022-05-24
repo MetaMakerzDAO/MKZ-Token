@@ -588,7 +588,7 @@ contract SparksoICO is TokenVesting, EIP712 {
      */
     function _checkMaxEUR(uint256 _eurAmount) 
         internal 
-        pure 
+        view 
         virtual
     {
         require(
