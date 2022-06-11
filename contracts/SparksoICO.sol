@@ -59,26 +59,31 @@ contract SparksoICO is TokenVesting, EIP712 {
     uint256 private _delay = 0;
 
     // Total amount EUR raised
+    // Unit : cent euros
     uint256 private _eurRaised = 0;
 
-    // Rate is different for each stages.
+    // Rate is different for each stage.
     // The rate is the conversion between EUR and the smallest and indivisible token unit.
+    // Unit : cent euros
     uint8[4] private _rate;
 
-    // EUR goal is different for each stages
+    // EUR goal is different for each stage
+    // Unit : cent euros
     uint256[4] private _eurGoals;
 
     // EUR goal base on _weiGoals
+    // Unit : cent euros
     uint256 private _totalEurGoal;
 
     // EUR mini to invest (used only for the first stage)
+    // Unit : cent euros
     uint256[2] private _minEur;
 
-    // Cliff values for each stages
+    // Cliff values for each stage
     uint256[4] private _cliffValues;
 
-    // Vesting value for stage 2,3 and 4 (cf. Whitepaper)
-    uint256 private _vestingValue;
+    // Vesting value for each stage (cf. Whitepaper)
+    uint256[4] private _vestingValue;
 
     // Vesting slice period
     uint256 private _slicePeriod;
@@ -99,7 +104,7 @@ contract SparksoICO is TokenVesting, EIP712 {
     bool private _cliff;
 
     // Purchased vest or not
-    bool private _vest;
+    // bool private _vest;
 
     /**
      * Event for token purchase logging
@@ -200,48 +205,56 @@ contract SparksoICO is TokenVesting, EIP712 {
         _EURUSD = AggregatorV3Interface(EURUSD_);
 
         // Input values Rate and Bonus
-        _bonus = [20, 15, 10, 0];
+        _bonus = [0, 0, 0, 0];
 
         // Input values EUR goals
+        // Unit : cent euros
         _eurGoals = [
-            562800, // Stage 1 EUR goal
-            2110500, // Stage 2 EUR goal
-            3376800, // Stage 3 EUR goal
-            4432050 // Stage 4 EUR goal
+            56280000, // Stage 1 EUR goal
+            211050000, // Stage 2 EUR goal
+            337680000, // Stage 3 EUR goal
+            443205000 // Stage 4 EUR goal
         ];
 
-        // Input rates (x100 coeff)
+        // Input rates
         // Unit : cent euros
         _rate = [4, 6, 8, 9];
 
         // Minimum eur to invest in first stage
-        // Unit : Euro
+        // Unit : cent euros
         _minEur = [
-            200, // Stage 1 first 500 people
-            500
+            20000, // Stage 1 first 500 people
+            50000
         ];
 
         // Calculate _totalEurGoal
+        // Unit : cent euros
         for (uint8 i = 0; i < STAGES; i++) _totalEurGoal += _eurGoals[i];
 
         // 30 days into seconds
         uint256 monthSecond = 30 * 24 * 3600;
 
         // Input values in seconds corresponding to cliff for each stages
-        _cliffValues = [0, 0, 1 * monthSecond, 2 * monthSecond];
+        // Add listing date when we have it.
+        _cliffValues = [0, 0, 0, monthSecond];
         // Input value in seconds corresponding to vesting for each stages
-        _vestingValue = 3 * monthSecond;
+        _vestingValue = [
+            4 * monthSecond,
+            8 * monthSecond,
+            12 * monthSecond,
+            12 * monthSecond
+        ];
         // Input value in second corresponding to token time release slices
-        _slicePeriod = 10 * 24 * 3600;
+        _slicePeriod = monthSecond;
 
         // Input value timestamp in second of the opening ICO time
-        _openingTime = 1654102800; // The 1st of June
+        _openingTime = 1656612002; // The 30th of June 20:00 UTC+2
         _closingTime = _openingTime + (monthSecond * 4);
 
         // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
         _cliff = false;
         // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
-        _vest = false;
+        //_vest = false;
     }
 
     // -----------------------------------------
@@ -256,7 +269,7 @@ contract SparksoICO is TokenVesting, EIP712 {
     }
 
     /**
-     * @return _eurRaised total amount EUR raised.
+     * @return _eurRaised total amount EUR raised. Unit : cent euros
      */
     function eurRaised() external view returns (uint256) {
         return _eurRaised;
@@ -345,8 +358,22 @@ contract SparksoICO is TokenVesting, EIP712 {
     {
         (, int256 MATICUSD, , , ) = _MATICUSD.latestRoundData();
         (, int256 EURUSD, , , ) = _EURUSD.latestRoundData();
-        return (((_weiAmount * uint256(MATICUSD)) / uint256(EURUSD)) *
-            ((10**_MATICUSD.decimals()) / (10**_EURUSD.decimals())));
+        uint8 decEURUSD = _EURUSD.decimals();
+        uint8 decMATICUSD = _MATICUSD.decimals();
+
+        // Return EUR with cent precision taking in account decimals variation if there is any
+        if (decEURUSD == decMATICUSD)
+            return
+                (_weiAmount * uint256(MATICUSD) * 100) /
+                (uint256(EURUSD) * 10**18);
+        else if (decEURUSD < decMATICUSD)
+            return ((_weiAmount * uint256(MATICUSD) * 100) /
+                (uint256(EURUSD) * 10**(decMATICUSD - decEURUSD + 18)));
+        else
+            return ((_weiAmount *
+                uint256(MATICUSD) *
+                100 *
+                10**(decEURUSD - decMATICUSD)) / (uint256(EURUSD) * 10**18));
     }
 
     /**
@@ -373,7 +400,7 @@ contract SparksoICO is TokenVesting, EIP712 {
             eurAmount,
             tokens,
             _cliff,
-            _vest
+            true //_vest
         );
 
         _updatePurchasingState();
@@ -441,10 +468,11 @@ contract SparksoICO is TokenVesting, EIP712 {
 
         if (_eurRaised >= eurGoal && _currentStage < STAGES) {
             _currentStage++;
+
             // Cliff is applied only for stage 3 and 4 (cf. Whitepaper)
-            _cliff = _currentStage >= 2 ? true : false;
+            _cliff = _currentStage >= 3 ? true : false;
             // Vesting is applied only for stage 2, 3 and 4 (cf. Whitepaper)
-            _vest = _currentStage != 0 ? true : false;
+            // _vest = _currentStage != 0 ? true : false;
         }
     }
 
@@ -456,15 +484,12 @@ contract SparksoICO is TokenVesting, EIP712 {
     function _deliverTokens(address _beneficiary, uint256 _tokenAmount)
         internal
     {
-        uint256 vestingValue = _currentStage == 0 ? 1 : _vestingValue;
-        uint256 slicePeriod = _currentStage == 0 ? 1 : _slicePeriod;
-
         _createVestingSchedule(
             _beneficiary,
             _closingTime,
             _cliffValues[_currentStage],
-            vestingValue,
-            slicePeriod,
+            _vestingValue[_currentStage],
+            _slicePeriod,
             false,
             _tokenAmount
         );
@@ -508,11 +533,11 @@ contract SparksoICO is TokenVesting, EIP712 {
         returns (uint256)
     {
         uint256 rate_ = _rate[_currentStage];
-        uint256 tokens = (_eurAmount / rate_) * 100;
-        uint256 bonus_ = _getCountAddresses() > 500
+        uint256 tokens = (_eurAmount / rate_); // Unit : cent euros
+        /*uint256 bonus_ = _getCountAddresses() > 500
             ? tokens * _bonus[_currentStage]
-            : tokens * 30; // 500 first bonus equal to 30%
-        return tokens + (bonus_ / 100);
+            : tokens * 30; // 500 first bonus equal to 30% */
+        return tokens + (_bonus[_currentStage] / 100);
     }
 
     /**
@@ -562,12 +587,16 @@ contract SparksoICO is TokenVesting, EIP712 {
             "Sparkso ICO: ICO is now closed, all funds are raised."
         );
 
-        if (_currentStage > 0)
+        if (_currentStage > 0) {
             require(
                 _eurAmount > 0,
                 "Sparkso ICO: Amount need to be superior to 0."
             );
-        else {
+            require(
+                _eurAmount >= _minEur[0],
+                "Sparkso ICO: Amount need to be superior to the minimum EUR defined."
+            );
+        } else {
             // Minimum wei for the first 500 people else the second minimum wei
             uint256 minEur = _getCountAddresses() < 500
                 ? _minEur[0]
@@ -581,18 +610,14 @@ contract SparksoICO is TokenVesting, EIP712 {
         _checkMaxEUR(_eurAmount);
     }
 
-
     /**
      * @dev Check if the transaction EUR is lower or equal to the maximum defined.
      * @param _eurAmount Value in EUR involved in the purchase
      */
-    function _checkMaxEUR(uint256 _eurAmount) 
-        internal 
-        view 
-        virtual
-    {
+    function _checkMaxEUR(uint256 _eurAmount) internal view virtual {
+        // Unit : cent euros
         require(
-            _eurAmount <= 15000,
+            _eurAmount <= 1500000,
             "Sparkso ICO: Amount need to be inferior or equal to 15 000 EUR."
         );
     }

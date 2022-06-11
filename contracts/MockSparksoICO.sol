@@ -28,15 +28,15 @@ contract MockSparksoICO is SparksoICO {
         )
     {}
 
-    function setCurrentTime(uint256 _time) external {
+    function setCurrentTime(uint256 _time) onlyOwner external {
         mockTime = _time;
     }
 
-    function setCountAddresses(uint256 _count) external {
+    function setCountAddresses(uint256 _count) onlyOwner external {
         countAdresses = _count;
     }
-    
-    function setDebug(bool _debug) external {
+
+    function setDebug(bool _debug) onlyOwner external {
         debug = _debug;
     }
 
@@ -48,14 +48,26 @@ contract MockSparksoICO is SparksoICO {
     {
         // Oracles Simulation
         // Data date from the 25th april on Polygon Mainnet
-        if(debug){
+        if (debug) {
             int256 MATICUSD = 135800000; // MATIC/USD chainlink simulation
             int256 EURUSD = 107380000; // EUR/USD chainlink simulation
 
-            return (weiAmount * uint256(MATICUSD)) / (uint256(EURUSD) * 10**18);
-        }
-        else
-            return super.changeMATICEUR(weiAmount);
+            uint8 decEURUSD = 8;
+            uint8 decMATICUSD = 8;
+
+            // Return EUR with cent precision taking in account decimals variation if there is any
+            if (decEURUSD == decMATICUSD)
+                return (weiAmount * uint256(MATICUSD) * 100) / (uint256(EURUSD) * 10 ** 18);
+            else if (decEURUSD < decMATICUSD)
+                return ((weiAmount * uint256(MATICUSD) * 100) /
+                    (uint256(EURUSD) * 10**(decMATICUSD - decEURUSD + 18)));
+            else
+                return ((weiAmount *
+                    uint256(MATICUSD) *
+                    100 *
+                    10**(decEURUSD - decMATICUSD)) / (uint256(EURUSD) * 10 ** 18));
+        } 
+        else return super.changeMATICEUR(weiAmount);
     }
 
     function _delayICO(uint256 _time) internal virtual override {
@@ -86,20 +98,13 @@ contract MockSparksoICO is SparksoICO {
      * @dev Check if the transaction EUR is lower or equal to the maximum defined.
      * @param _eurAmount Value in EUR involved in the purchase
      */
-    function _checkMaxEUR(uint256 _eurAmount) 
-        internal 
-        override
-        view
-        virtual
-    {
-        if(debug){
+    function _checkMaxEUR(uint256 _eurAmount) internal view virtual override {
+        if (debug) {
             // ONLY FOR TEST PURPOSES
             require(
-                _eurAmount <= 150000000000,
+                _eurAmount <= 150000000000000000000000000000000,
                 "Sparkso ICO: Amount need to be inferior or equal to 15 000 EUR."
             );
-        }
-        else
-            super._checkMaxEUR(_eurAmount);
+        } else super._checkMaxEUR(_eurAmount);
     }
 }
