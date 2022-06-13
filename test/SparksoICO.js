@@ -23,7 +23,7 @@ const calcEur = (weiAmount) => {
 
 const calcTokens = (weiAmount, rate, bonus) => {
   let eurAmount = calcEur(weiAmount)
-  let tokens = parseInt(eurAmount / rate) 
+  let tokens = eurAmount / rate
   return tokens + parseInt(tokens * 0.01 * bonus);
 }
 
@@ -228,7 +228,7 @@ describe("Sparsko ICO", function () {
         );
 
       // the number of tokens beneficiary should be able to release
-      var tokens = ethers.utils.parseEther(parseInt(calcTokens(ethers.utils.parseEther("1000"), RATE[0], 0)).toString())
+      var tokens = ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("1000"), RATE[0], 0).toString())
 
       // check that vested amount is equal to all the tokens bought at the first ICO stage
       expect(
@@ -270,7 +270,7 @@ describe("Sparsko ICO", function () {
         );
 
       // the number of tokens beneficiary should be able to release
-      tokens = ethers.utils.parseEther(parseInt(calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0])).toString())
+      tokens = ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0]).toString())
 
       // check that second beneficiary can release all his tokens bought at the first ICO stage
       await expect(
@@ -289,7 +289,7 @@ describe("Sparsko ICO", function () {
           0
         );
 
-      const b3_tokens = parseInt(calcTokens(ethers.utils.parseEther("1668818.1"), RATE[1], BONUS[1]))
+      const b3_tokens = calcTokens(ethers.utils.parseEther("1668818.1"), RATE[1], BONUS[1])
       
       // beneficiary 3 should not be able to release his token until the cliff + slice period
       await expect(
@@ -302,7 +302,7 @@ describe("Sparsko ICO", function () {
       var releasableTokens = await sparksoICO.computeReleasableAmount(
         vestingScheduleId
       );
-      expect(releasableTokens).to.equal(ethers.utils.parseEther((b3_tokens / 2).toString()));
+      expect(releasableTokens).to.equal("17587500583333333333333333");//ethers.utils.parseEther((b3_tokens / 2).toString()));
 
       // release the first slice of this vesting schedule
       await expect(
@@ -317,7 +317,7 @@ describe("Sparsko ICO", function () {
           ethers.utils.parseEther((b3_tokens / 2).toString())
         );
 
-      const b4_tokens =  ethers.utils.parseEther(parseInt(calcTokens(ethers.utils.parseEther("2670109"), RATE[2], BONUS[2])).toString())
+      const b4_tokens =  ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("2670109"), RATE[2], BONUS[2]).toString())
 
       // fourth beneficiary
       vestingScheduleId =
@@ -367,7 +367,7 @@ describe("Sparsko ICO", function () {
         );
 
       // last beneficiary
-      const b5_tokens =  ethers.utils.parseEther(parseInt(calcTokens(ethers.utils.parseEther("3504518"), RATE[3], BONUS[3])).toString())
+      const b5_tokens =  ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("3504518"), RATE[3], BONUS[3]).toString())
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
           beneficiary5.address,
