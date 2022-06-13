@@ -533,7 +533,7 @@ contract SparksoICO is TokenVesting, EIP712 {
         returns (uint256)
     {
         uint256 rate_ = _rate[_currentStage];
-        uint256 tokens = (_eurAmount / rate_); // Unit : cent euros
+        uint256 tokens = (_eurAmount / rate_) * 10 ** 18; // Unit : cent euros
         /*uint256 bonus_ = _getCountAddresses() > 500
             ? tokens * _bonus[_currentStage]
             : tokens * 30; // 500 first bonus equal to 30% */
