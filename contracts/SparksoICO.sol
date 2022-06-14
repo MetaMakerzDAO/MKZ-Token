@@ -41,10 +41,11 @@ contract SparksoICO is TokenVesting, EIP712 {
             "PermitRelease(address systemAddress,address beneficiary,uint256 nonce,uint256 deadline)"
         );
 
-    // Bonus is a percentage of your token purchased in addition to your given tokens.
-    // If bonus is 30% you will have : number_tokens + number_tokens * (30 / 100)
     // Bonus is different for each stages
     uint8[4] private _bonus;
+
+    // Percentage first distribution token
+    uint8[4] private _firstDistribution;
 
     // Stages of the ICO
     uint8 public constant STAGES = 4;
@@ -206,6 +207,9 @@ contract SparksoICO is TokenVesting, EIP712 {
 
         // Input values Rate and Bonus
         _bonus = [0, 0, 0, 0];
+
+        // First distribution in %
+        _firstDistribution = [80, 20, 10, 10];
 
         // Input values EUR goals
         // Unit : cent euros
@@ -484,14 +488,25 @@ contract SparksoICO is TokenVesting, EIP712 {
     function _deliverTokens(address _beneficiary, uint256 _tokenAmount)
         internal
     {
+        // first slicePeriod distribution depends on the percentage _firstDistribution 
         _createVestingSchedule(
             _beneficiary,
             _closingTime,
-            _cliffValues[_currentStage],
-            _vestingValue[_currentStage],
+            _cliffValues[_currentStage], 
+            _cliffValues[_currentStage] + _slicePeriod,
             _slicePeriod,
             false,
-            _tokenAmount
+            ((_tokenAmount * _firstDistribution[_currentStage]) / 100)
+        );
+        // linear vesting schedule with the rest the _tokenAmount
+        _createVestingSchedule(
+            _beneficiary,
+            _closingTime + _cliffValues[_currentStage] + _slicePeriod,
+            0,
+            _vestingValue[_currentStage] - _slicePeriod,
+            _slicePeriod,
+            false,
+            ((_tokenAmount * (100 - _firstDistribution[_currentStage])) / 100)
         );
     }
 
@@ -537,7 +552,7 @@ contract SparksoICO is TokenVesting, EIP712 {
         /*uint256 bonus_ = _getCountAddresses() > 500
             ? tokens * _bonus[_currentStage]
             : tokens * 30; // 500 first bonus equal to 30% */
-        return tokens + (_bonus[_currentStage] / 100);
+        return tokens + ((_bonus[_currentStage] * tokens) / 100);
     }
 
     /**

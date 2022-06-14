@@ -186,7 +186,7 @@ describe("Sparsko ICO", function () {
           .connect(beneficiary2)
           .buyTokens(beneficiary2.address, { value: value })
       ).to.emit(sparksoICO, "TokensPurchase");
-
+      
       const beneficiary3 = addr3;
       value = ethers.utils.parseEther("1668818.1");
       // purchase all the second stage tokens
@@ -227,19 +227,28 @@ describe("Sparsko ICO", function () {
           0
         );
 
+      var vestingScheduleId2 =
+        await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary.address,
+          1
+        );
+      
       // the number of tokens beneficiary should be able to release
-      var tokens = ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("1000"), RATE[0], 0).toString())
+      var firstTokens = ethers.utils.parseEther((0.8 * calcTokens(ethers.utils.parseEther("1000"), RATE[0], 0)).toString())
+      var tokens = ethers.utils.parseEther((0.2 * calcTokens(ethers.utils.parseEther("1000"), RATE[0], 0)).toString())
+      
+      // check two schedules id exists
+      expect(await sparksoICO.getVestingSchedulesCountByBeneficiary(beneficiary.address)).to.be.equal(2)
 
-      // check that vested amount is equal to all the tokens bought at the first ICO stage
-      expect(
-        await sparksoICO.computeReleasableAmount(vestingScheduleId)
-      ).to.be.equal(tokens);
-
+      // check first distribution and tokens can be release
+      expect(await sparksoICO.computeReleasableAmount(vestingScheduleId)).to.be.equal(firstTokens);
+      expect(await sparksoICO.computeReleasableAmount(vestingScheduleId2)).to.be.equal(tokens);
+       
       // check that only people with a proper signature deadline can interact with the releaseTokens function
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .releaseTokens(vestingScheduleId, tokens, beneficiary.address, openingTime, buildSignature(beneficiary.address, 0, openingTime))
+          .releaseTokens(vestingScheduleId, firstTokens, beneficiary.address, openingTime, buildSignature(beneficiary.address, 0, openingTime))
       ).to.be.revertedWith("SparksoICO: expired deadline release permit signature.");
 
 
@@ -247,77 +256,123 @@ describe("Sparsko ICO", function () {
       await expect(
         sparksoICO
           .connect(beneficiary)
-          .releaseTokens(vestingScheduleId, tokens, beneficiary.address, deadline, buildSignature(beneficiary2.address, 1, deadline))
+          .releaseTokens(vestingScheduleId2, tokens, beneficiary.address, deadline, buildSignature(beneficiary2.address, 1, deadline))
       ).to.be.revertedWith("Sparkso ICO: Invalid release permit signature.");
 
       // check that user can release all his tokens
       await expect(
-        sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId, tokens, beneficiary.address, deadline, buildSignature(beneficiary.address, 0, deadline))
+        sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId, firstTokens, beneficiary.address, deadline, buildSignature(beneficiary.address, 0, deadline))
       )
         .to.emit(testToken, "Transfer")
-        .withArgs(sparksoICO.address, beneficiary.address, tokens);
+        .withArgs(sparksoICO.address, beneficiary.address, firstTokens);
+
+      await expect(
+          sparksoICO.connect(beneficiary).releaseTokens(vestingScheduleId2, tokens, beneficiary.address, deadline, buildSignature(beneficiary.address, 1, deadline))
+        )
+          .to.emit(testToken, "Transfer")
+          .withArgs(sparksoICO.address, beneficiary.address, tokens);
 
       // check the balance of the first beneficiary
-      expect(await testToken.balanceOf(beneficiary.address)).to.equal(tokens);
-
-      // second beneficiary
+      expect(await testToken.balanceOf(beneficiary.address)).to.equal(ethers.utils.parseEther( calcTokens(ethers.utils.parseEther("1000"), RATE[0], 0).toString()));
+      
       // compute vesting schedule id
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
-
           beneficiary2.address,
           0
         );
+      
+      vestingScheduleId2 =
+        await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary2.address,
+          1
+        );
 
       // the number of tokens beneficiary should be able to release
-      tokens = ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0]).toString())
+      firstTokens = "11230728200000000000000000"//ethers.utils.parseEther((0.8 * calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0])).toString())
+      tokens = "2807682050000000000000000"//ethers.utils.parseEther((0.2 * calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0])).toString())
+
+      // check first distribution and tokens can be release
+      expect(await sparksoICO.computeReleasableAmount(vestingScheduleId)).to.be.equal(firstTokens);
+      expect(await sparksoICO.computeReleasableAmount(vestingScheduleId2)).to.be.equal(tokens);
 
       // check that second beneficiary can release all his tokens bought at the first ICO stage
       await expect(
-        sparksoICO.connect(beneficiary2).releaseTokens(vestingScheduleId, tokens, beneficiary2.address, deadline, buildSignature(beneficiary2.address, 0, deadline))
+        sparksoICO.connect(beneficiary2).releaseTokens(vestingScheduleId, firstTokens, beneficiary2.address, deadline, buildSignature(beneficiary2.address, 0, deadline))
       )
+        .to.emit(testToken, "Transfer")
+        .withArgs(sparksoICO.address, beneficiary2.address, firstTokens);
+
+      
+      await expect(
+          sparksoICO.connect(beneficiary2).releaseTokens(vestingScheduleId2, tokens, beneficiary2.address, deadline, buildSignature(beneficiary2.address, 1, deadline))
+        )
         .to.emit(testToken, "Transfer")
         .withArgs(sparksoICO.address, beneficiary2.address, tokens);
 
       // check the balance of the beneficiary 2
-      expect(await testToken.balanceOf(beneficiary2.address)).to.equal(tokens);
+      expect(await testToken.balanceOf(beneficiary2.address)).to.equal(ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("444019"), RATE[0], BONUS[0]).toString()));
 
       // third beneficiary
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
           beneficiary3.address,
           0
-        );
+      );
+      vestingScheduleId2 =
+        await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary3.address,
+          1
+      );
 
-      const b3_tokens = calcTokens(ethers.utils.parseEther("1668818.1"), RATE[1], BONUS[1])
+      const b3_tokens = "7035000233333333333333333" // 0.2 * global tokens (infinite number truncate at 18 decimals)
+      const b3_tokens_releasable = "12060000399999999999999999" // the rest of tokens : 0.8 * tokens * 3 / 7  (7 periods remains for the second schedule, we are at the third one)
       
       // beneficiary 3 should not be able to release his token until the cliff + slice period
       await expect(
-        sparksoICO.connect(beneficiary3).releaseTokens(vestingScheduleId, ethers.utils.parseEther(b3_tokens.toString()), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 0, deadline))
+        sparksoICO.connect(beneficiary3).releaseTokens(vestingScheduleId,ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("1668818.1"), RATE[0], 0).toString()), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 0, deadline))
       ).to.be.revertedWith(
         "TokenVesting: cannot release tokens, not enough vested tokens"
       );
 
       // check beneficiary 3 could release first slice of this vesting 
-      var releasableTokens = await sparksoICO.computeReleasableAmount(
+      expect(await sparksoICO.computeReleasableAmount(
         vestingScheduleId
-      );
-      expect(releasableTokens).to.equal("17587500583333333333333333");//ethers.utils.parseEther((b3_tokens / 2).toString()));
+      )).to.be.equal(b3_tokens)
 
+      expect(await sparksoICO.computeReleasableAmount(
+        vestingScheduleId2
+      )).to.be.equal(b3_tokens_releasable) 
+
+    
       // release the first slice of this vesting schedule
       await expect(
         sparksoICO
           .connect(beneficiary3)
-          .releaseTokens(vestingScheduleId,ethers.utils.parseEther((b3_tokens / 2).toString()), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 0, deadline))
+          .releaseTokens(vestingScheduleId, b3_tokens, beneficiary3.address, deadline, buildSignature(beneficiary3.address, 0, deadline))
       )
         .to.emit(testToken, "Transfer")
         .withArgs(
           sparksoICO.address,
           beneficiary3.address,
-          ethers.utils.parseEther((b3_tokens / 2).toString())
+          b3_tokens
         );
-
-      const b4_tokens =  ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("2670109"), RATE[2], BONUS[2]).toString())
+      
+        await expect(
+          sparksoICO
+            .connect(beneficiary3)
+            .releaseTokens(vestingScheduleId2, b3_tokens_releasable, beneficiary3.address, deadline, buildSignature(beneficiary3.address, 1, deadline))
+        )
+          .to.emit(testToken, "Transfer")
+          .withArgs(
+            sparksoICO.address,
+            beneficiary3.address,
+            b3_tokens_releasable
+          );
+      
+          // the number of tokens beneficiary should be able to release
+      var b4_tokens = ethers.utils.parseEther((0.1 * calcTokens(ethers.utils.parseEther("2670109"), RATE[2], 0)).toString())//"4221000200000000000000000"
+      var b4_tokens2 = "37989001800000000000000000" //ethers.utils.parseEther((0.9 * calcTokens(ethers.utils.parseEther("2670109"), RATE[2], 0)).toString())
 
       // fourth beneficiary
       vestingScheduleId =
@@ -325,16 +380,31 @@ describe("Sparsko ICO", function () {
           beneficiary4.address,
           0
         );
+      
+      vestingScheduleId2 =
+        await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary4.address,
+          1
+        );
 
       // should revert the fourth beneficiary attempt to relase tokens because of the cliff period
       await expect(
-        sparksoICO.connect(beneficiary4).releaseTokens(vestingScheduleId, b4_tokens, beneficiary4.address, deadline, buildSignature(beneficiary4.address, 0, deadline))
+        sparksoICO.connect(beneficiary4).releaseTokens(vestingScheduleId2, b4_tokens2, beneficiary4.address, deadline, buildSignature(beneficiary4.address, 0, deadline))
       ).to.be.revertedWith(
         "TokenVesting: cannot release tokens, not enough vested tokens"
       );
 
       // change time to the end of the vestsing period
       await sparksoICO.setCurrentTime(closingTime + CLIFF[3] + VESTING[3]);
+
+      // check beneficiary 4 could release first slice of this vesting 
+      expect(await sparksoICO.computeReleasableAmount(
+        vestingScheduleId
+      )).to.be.equal(b4_tokens)
+
+      expect(await sparksoICO.computeReleasableAmount(
+        vestingScheduleId2
+      )).to.be.equal(b4_tokens2) 
 
       // check that the fourth beneficiary could release all his tokens
       await expect(
@@ -343,36 +413,59 @@ describe("Sparsko ICO", function () {
         .to.emit(testToken, "Transfer")
         .withArgs(sparksoICO.address, beneficiary4.address, b4_tokens);
 
+      // check that the fourth beneficiary could release all his tokens
+      await expect(
+        sparksoICO.connect(beneficiary4).releaseTokens(vestingScheduleId2, b4_tokens2, beneficiary4.address, deadline, buildSignature(beneficiary4.address, 1, deadline))
+      )
+        .to.emit(testToken, "Transfer")
+        .withArgs(sparksoICO.address, beneficiary4.address, b4_tokens2);
+
       // third beneficiary
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
           beneficiary3.address,
-          0
+          1
         );
 
       // check nonces is equal to 1 because its the second time signature for this user
-      expect(await sparksoICO.nonces(beneficiary3.address)).to.equal(1);
+      expect(await sparksoICO.nonces(beneficiary3.address)).to.equal(2);
 
+      let restAmount = await sparksoICO.computeReleasableAmount(vestingScheduleId)
       // check that the third beneficiary could release the rest of his tokens
       await expect(
         sparksoICO
           .connect(beneficiary3)
-          .releaseTokens(vestingScheduleId ,ethers.utils.parseEther((b3_tokens / 2).toString()), beneficiary3.address, deadline, buildSignature(beneficiary3.address, 1, deadline))
+          .releaseTokens(vestingScheduleId ,restAmount, beneficiary3.address, deadline, buildSignature(beneficiary3.address, 2, deadline))
       )
         .to.emit(testToken, "Transfer")
         .withArgs(
           sparksoICO.address,
           beneficiary3.address,
-          ethers.utils.parseEther((b3_tokens / 2).toString())
+          restAmount
         );
 
       // last beneficiary
-      const b5_tokens =  ethers.utils.parseEther(calcTokens(ethers.utils.parseEther("3504518"), RATE[3], BONUS[3]).toString())
+      var b5_tokens = "4924500155555555555555555"//ethers.utils.parseEther((0.1 * calcTokens(ethers.utils.parseEther("3504518"), RATE[3], 0)).toString())
+      var b5_tokens2 = "44320501399999999999999999"//ethers.utils.parseEther((0.9 * calcTokens(ethers.utils.parseEther("3504518"), RATE[3], 0)).toString())
       vestingScheduleId =
         await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
           beneficiary5.address,
           0
         );
+      vestingScheduleId2 =
+        await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+          beneficiary5.address,
+          1
+        );
+
+        // check beneficiary 5 could release first slice of this vesting 
+      expect(await sparksoICO.computeReleasableAmount(
+        vestingScheduleId
+      )).to.be.equal(b5_tokens)
+
+      expect(await sparksoICO.computeReleasableAmount(
+        vestingScheduleId2
+      )).to.be.equal(b5_tokens2) 
 
       // check that the fifth beneficiary could release the rest of his tokens
       await expect(
@@ -380,6 +473,12 @@ describe("Sparsko ICO", function () {
       )
         .to.emit(testToken, "Transfer")
         .withArgs(sparksoICO.address, beneficiary5.address, b5_tokens);
+
+        await expect(
+          sparksoICO.connect(beneficiary5).releaseTokens(vestingScheduleId2, b5_tokens2, beneficiary5.address, deadline, buildSignature(beneficiary5.address, 1, deadline))
+        )
+          .to.emit(testToken, "Transfer")
+          .withArgs(sparksoICO.address, beneficiary5.address, b5_tokens2);
 
       /*
        * TEST SUMMARY
@@ -499,6 +598,11 @@ describe("Sparsko ICO", function () {
           beneficiary.address,
           0
         );
+      let vestingScheduleId2 =
+      await sparksoICO.computeVestingScheduleIdForAddressAndIndex(
+        beneficiary.address,
+        1
+      );
 
       // get last vesting schedule
       lastVestScheduleId = await sparksoICO.getVestingIdAtIndex(0);
@@ -511,10 +615,10 @@ describe("Sparsko ICO", function () {
         await sparksoICO.getVestingSchedulesCountByBeneficiary(
           beneficiary.address
         )
-      ).to.equal(1);
+      ).to.equal(2);
 
       // get vesting schedule
-      vestingSchedule = await sparksoICO.getVestingSchedule(vestingScheduleId);
+      vestingSchedule = await sparksoICO.getVestingSchedule(vestingScheduleId2);
 
       // get last vesting schedule
       lastVestSchedule = await sparksoICO.getLastVestingScheduleForHolder(
