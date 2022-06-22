@@ -6,6 +6,7 @@ require("hardhat-docgen");
 require("hardhat-tracer");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
+require('dotenv').config({ path: 'C:/Users/Valen/Desktop/Projet/Sparkso/sparkso-token/.env' })
 
 const etherscanApiKey = getEtherscanApiKey();
 
@@ -24,8 +25,9 @@ module.exports = {
   },
   networks: {
     hardhat: {
+      chainId: 1,
       accounts: {
-        accountsBalance: "10000000000000000000000000"
+        accountsBalance: "10000000000000000000000000",
       }
     },
     mainnet: mainnetNetworkConfig(),
@@ -50,7 +52,18 @@ module.exports = {
     currency: "USD",
   },
   etherscan: {
-    apiKey: `${etherscanApiKey}`,
+    apiKey: {
+             
+      //ethereum
+      mainnet: `${etherscanApiKey}`,
+      ropsten: `${etherscanApiKey}`,
+      rinkeby: `${etherscanApiKey}`,
+      goerli: `${etherscanApiKey}`,
+      kovan: `${etherscanApiKey}`,
+      //polygon
+      polygon: `${etherscanApiKey}`,
+      polygonMumbai: `${etherscanApiKey}`
+ }
   },
 };
 
@@ -145,6 +158,7 @@ function polygonMainnetNetworkConfig(){
 }
 
 function polygonMumbaiNetworkConfig(){
+  
   let url = "https://polygon-mumbai.g.alchemy.com/v2/";
   let accountPrivateKey =
     "";
