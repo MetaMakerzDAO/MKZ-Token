@@ -2,9 +2,9 @@ name: main
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
-    branches: [main]
+    branches: [main, development]
 
 jobs:
   build:
@@ -26,9 +26,7 @@ jobs:
           node-version: ${{ matrix.node_version }}
           architecture: ${{ matrix.architecture }}
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: npm i
       - name: Compile smart contracts
-        env:
-          FUJI_PRIVATE_KEY: ${{ secrets.FUJI_PRIVATE_KEY }}
-        run: yarn compile
-      - run: yarn test
+        run: npm run compile
+      - run: npm run test
