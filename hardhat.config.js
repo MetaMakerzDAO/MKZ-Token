@@ -6,7 +6,9 @@ require("hardhat-docgen");
 require("hardhat-tracer");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
-require('dotenv').config({ path: 'C:/Users/Valen/Desktop/Projet/Sparkso/sparkso-token/.env' })
+require("dotenv").config({
+  path: "C:/Users/Valen/Desktop/Projet/Sparkso/sparkso-token/.env",
+});
 
 const etherscanApiKey = getEtherscanApiKey();
 
@@ -28,7 +30,7 @@ module.exports = {
       chainId: 1,
       accounts: {
         accountsBalance: "10000000000000000000000000",
-      }
+      },
     },
     mainnet: mainnetNetworkConfig(),
     goerli: goerliNetworkConfig(),
@@ -53,7 +55,6 @@ module.exports = {
   },
   etherscan: {
     apiKey: {
-             
       //ethereum
       mainnet: `${etherscanApiKey}`,
       ropsten: `${etherscanApiKey}`,
@@ -62,8 +63,8 @@ module.exports = {
       kovan: `${etherscanApiKey}`,
       //polygon
       polygon: `${etherscanApiKey}`,
-      polygonMumbai: `${etherscanApiKey}`
- }
+      polygonMumbai: `${etherscanApiKey}`,
+    },
   },
 };
 
@@ -139,10 +140,9 @@ function bscTestnetNetworkConfig() {
   };
 }
 
-function polygonMainnetNetworkConfig(){
+function polygonMainnetNetworkConfig() {
   let url = "https://polygon-mainnet.g.alchemy.com/v2/";
-  let accountPrivateKey =
-    "";
+  let accountPrivateKey = "";
   if (process.env.POLYGON_MAINNET_ENDPOINT) {
     url = `${process.env.POLYGON_MAINNET_ENDPOINT}`;
   }
@@ -153,15 +153,13 @@ function polygonMainnetNetworkConfig(){
 
   return {
     url: url,
-    accounts: {mnemonic: accountPrivateKey},
+    accounts: { mnemonic: accountPrivateKey },
   };
 }
 
-function polygonMumbaiNetworkConfig(){
-  
+function polygonMumbaiNetworkConfig() {
   let url = "https://polygon-mumbai.g.alchemy.com/v2/";
-  let accountPrivateKey =
-    "";
+  let accountPrivateKey = "";
   if (process.env.POLYGON_MUMBAI_ENDPOINT) {
     url = `${process.env.POLYGON_MUMBAI_ENDPOINT}`;
   }
@@ -172,7 +170,7 @@ function polygonMumbaiNetworkConfig(){
 
   return {
     url: url,
-    accounts: {mnemonic: accountPrivateKey},
+    accounts: { mnemonic: accountPrivateKey },
   };
 }
 
