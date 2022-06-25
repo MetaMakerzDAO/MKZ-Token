@@ -7,7 +7,7 @@ require("hardhat-tracer");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require("dotenv").config({
-  path: "C:/Users/Valen/Desktop/Projet/Sparkso/sparkso-token/.env",
+  path: "C:/Users/Valentin/Desktop/Projet/sparkso-token/.env",
 });
 
 const etherscanApiKey = getEtherscanApiKey();

@@ -19,7 +19,7 @@ Optionally revocable by the owner.
 
 - [TokenVesting](https://github.com/abdelhamidbakhta/token-vesting-contracts/blob/main/audits/hacken_audit_report.pdf) security audit from [Hacken](https://hacken.io)
 
-- SparksoICO - ⌛In progress⌛
+- [SparksoICO](https://github.com/vachmara/sparkso-token/blob/main/audits/certik_audit_2022.pdf) - security audit from [Certik](https://certik.com)
 
 ### 📦 Installation
 

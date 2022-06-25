@@ -1,6 +1,6 @@
 async function main() {
   const [deployer] = await ethers.getSigners();
-  const wallet = '0x0064445ee26c1147CC701357c44110AA10380705'; // Get all Sparkso tokens
+  const wallet = '0xdec44382eaed2954e170bd2a36381a9b06627332'; // Get all Sparkso tokens
 
   console.log("Deploying contracts with the account:", deployer.address);
 
@@ -19,9 +19,7 @@ async function main() {
     "\nICO wallet:",
     wallet
   );
-
-  await SparksoICO.transferOwnership(wallet) 
-  console.log("New owner : ", sparksoICO.owner())
+  
 }
 
 main()

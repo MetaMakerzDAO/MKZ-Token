@@ -19,8 +19,6 @@ async function main() {
     "\nICO wallet:",
     wallet
   );
-
-  await SparksoICO.transferOwnership(wallet)
 }
 
 main()
