@@ -1,14 +1,13 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-solhint");
 require("@nomiclabs/hardhat-etherscan");
+require("@openzeppelin/hardhat-upgrades");
 require("hardhat-abi-exporter");
 require("hardhat-docgen");
 require("hardhat-tracer");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
-require("dotenv").config({
-  path: "C:/Users/Valentin/Desktop/Projet/sparkso-token/.env",
-});
+require("dotenv").config();
 
 const etherscanApiKey = getEtherscanApiKey();
 
@@ -31,6 +30,7 @@ module.exports = {
       accounts: {
         accountsBalance: "10000000000000000000000000",
       },
+      allowUnlimitedContractSize: true
     },
     mainnet: mainnetNetworkConfig(),
     goerli: goerliNetworkConfig(),

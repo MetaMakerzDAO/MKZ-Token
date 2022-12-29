@@ -1,5 +1,5 @@
 {
-  "name": "sparkso-ico",
+  "name": "mkz-token",
   "version": "1.0.0",
   "description": "ERC20 Crowdsale and Token Vesting Smart Contracts",
   "main": "index.js",
@@ -25,7 +25,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vachmara/sparkso-token.git"
+    "url": "git+https://github.com/MetaMakerzDAO/MKZ-Token.git"
   },
   "keywords": [
     "ERC20",
@@ -34,14 +34,17 @@
     "Smart+Contracts",
     "Blockchain",
     "ICO",
-    "Sparkso"
+    "MKZ",
+    "MetaMakerz"
   ],
   "author": "Valentin Chmara",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/vachmara/sparkso-token#readme",
+  "homepage": "https://github.com/MetaMakerzDAO/MKZ-Token#readme",
   "dependencies": {
     "@chainlink/contracts": "^0.4.0",
     "@openzeppelin/contracts": "^4.1.0",
+    "@openzeppelin/contracts-upgradeable": "^4.8.0",
+    "@openzeppelin/hardhat-upgrades": "^1.22.0",
     "dotenv": "^16.0.1",
     "prettier": "^2.3.0",
     "solc": "npm:solc@^0.8.4",
@@ -64,7 +67,7 @@
     "hardhat": "^2.3.0",
     "hardhat-abi-exporter": "^2.2.1",
     "hardhat-docgen": "^1.1.1",
-    "hardhat-gas-reporter": "^1.0.4",
+    "hardhat-gas-reporter": "^1.0.9",
     "hardhat-tracer": "^1.0.0-alpha.6"
   }
 }
