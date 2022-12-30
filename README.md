@@ -26,8 +26,10 @@ Some of the TokenVesting functions has been removed to optimized the contrat.
 
 ### ⛓️ List important addresses
 
-- MKZ deployed on Polygon : [`Not deployed`]()
+- MKZ deployed on Polygon : [`0x33423571449002146e8151d8a3985EebCe895ce9`](https://polygonscan.com/address/0x33423571449002146e8151d8a3985EebCe895ce9)
+- TokenDrop deployed on Polygon : [`0x5cc521947055a0128b178bc3a00f38817d2da783`](https://polygonscan.com/address/0x5cc521947055a0128b178bc3a00f38817d2da783)
 - MetaMakerzDAO Multisig on Polygon : [`0x29cDA60b0BF9B7f559E44bD24134e0b856979E86`](https://polygonscan.com/address/0x29cDA60b0BF9B7f559E44bD24134e0b856979E86)
+- Chainlink Automation : [`here`](https://automation.chain.link/polygon/54242169792762862327810549474831316325674092258883632174677422489014284251976)
 
 ### 📦 Installation
 
