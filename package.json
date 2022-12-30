@@ -13,7 +13,7 @@
     "deploy:mainnet": "npx hardhat run scripts/deploy.js --network mainnet",
     "deploy:goerli": "npx hardhat run scripts/deploy.js --network goerli",
     "deploy:polygon:mainnet": "npx hardhat run scripts/deploy.js --network polygonMainnet",
-    "deploy:polygon:mumbai": "npx hardhat run scripts/deploy-test.js --network polygonMumbai",
+    "deploy:polygon:mumbai": "npx hardhat run scripts/deploy.js --network polygonMumbai",
     "deploy:bsc:mainnet": "npx hardhat run scripts/deploy.js --network bscMainnet",
     "deploy:bsc:testnet": "npx hardhat run scripts/deploy.js --network bscTestnet",
     "tools:surya:graph": "surya graph ./contracts/**/*.sol | dot -Tpng > build/TokenVesting.png",

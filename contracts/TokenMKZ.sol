@@ -28,7 +28,7 @@ contract MKZ is ERC20Upgradeable, UUPSUpgradeable, OwnableUpgradeable {
         );
         _totalSupply = 240000000;
 
-        __ERC20_init( "MKZ", "MetaMakerz");
+        __ERC20_init("MetaMakerz", "MKZ");
         __Ownable_init();
         _mint(wallet_, (_totalSupply * 10**18));
     }

@@ -101,6 +101,8 @@ async function main() {
   tokenDrop = await TokenDrop.deploy(token.address);
   await tokenDrop.deployed();
 
+  console.log("TokenDrop address:", token.address);
+
   await token.connect(deployer).transfer(tokenDrop.address, ethers.utils.parseEther(`${amountsInTokenDrop}`));
   await token.connect(deployer).transfer(multiSig, ethers.utils.parseEther(`${240000000 - amountsInTokenDrop}`));
   await tokenDrop.addInvestors(beneficiaries, amounts, slices);
